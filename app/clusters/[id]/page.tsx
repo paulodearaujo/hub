@@ -1,5 +1,4 @@
 import { AppSidebar } from "@/components/app-sidebar";
-import type { Metadata, ResolvingMetadata } from "next";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import {
   getAvailableWeeks,
@@ -10,6 +9,7 @@ import {
   getRunMetadata,
 } from "@/lib/data/metrics-queries";
 import type { Tables } from "@/lib/database.types";
+import type { Metadata, ResolvingMetadata } from "next";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 
@@ -156,8 +156,24 @@ async function CardsSection({
 }) {
   const runId = await getLatestRunId();
   if (!runId) return null;
-  const weekly = await getClusterWeeklyMetrics(runId, clusterId, selectedWeeks);
-  const totals = weekly.reduce(
+  // Base period totals
+  const weeklyBase = await getClusterWeeklyMetrics(runId, clusterId, selectedWeeks);
+  // Build delta period: if only 1 week selected, include the immediately previous available week
+  let deltaWeeks: string[] = selectedWeeks;
+  if (selectedWeeks.length === 1) {
+    const all = await getAvailableWeeks();
+    const idx = all.indexOf(selectedWeeks[0] as string);
+    if (idx >= 0 && idx + 1 < all.length) {
+      deltaWeeks = Array.from(
+        new Set([all[idx + 1] as string, selectedWeeks[0] as string]),
+      ) as string[];
+    }
+  }
+  const weeklyForDelta = await getClusterWeeklyMetrics(runId, clusterId, deltaWeeks);
+  const weeksSorted = [...deltaWeeks].sort((a, b) => a.localeCompare(b));
+  const mid = Math.floor(weeksSorted.length / 2);
+  const earlySet = new Set(weeksSorted.slice(0, mid));
+  const totals = weeklyBase.reduce(
     (acc, w: WeeklyMetric) => {
       acc.impressions += w.gsc_impressions || 0;
       acc.clicks += w.gsc_clicks || 0;
@@ -166,7 +182,7 @@ async function CardsSection({
     },
     { impressions: 0, clicks: 0, conversions: 0 },
   );
-  const [sumWeightedPos, sumImpr] = weekly.reduce(
+  const [sumWeightedPos, sumImpr] = weeklyBase.reduce(
     (acc, w) => {
       const impressions = w.gsc_impressions || 0;
       const pos = w.gsc_position || 0;
@@ -177,6 +193,22 @@ async function CardsSection({
     [0, 0] as [number, number],
   );
   const position = sumImpr > 0 ? sumWeightedPos / sumImpr : 0;
+  // Early bucket for previous period
+  const earlyTotals = weeklyForDelta.reduce(
+    (acc, w: WeeklyMetric) => {
+      const isEarly = w.week_ending && earlySet.has(w.week_ending);
+      if (!isEarly) return acc;
+      const impressions = w.gsc_impressions || 0;
+      acc.impressions += impressions;
+      acc.clicks += w.gsc_clicks || 0;
+      acc.conversions += w.amplitude_conversions || 0;
+      acc._posWeighted += (w.gsc_position || 0) * impressions;
+      return acc;
+    },
+    { impressions: 0, clicks: 0, conversions: 0, _posWeighted: 0 },
+  );
+  const earlyPosition =
+    earlyTotals.impressions > 0 ? earlyTotals._posWeighted / earlyTotals.impressions : 0;
   return (
     <SectionCards
       metrics={{
@@ -184,6 +216,12 @@ async function CardsSection({
         clicks: totals.clicks,
         conversions: totals.conversions,
         position,
+        previousPeriod: {
+          impressions: earlyTotals.impressions,
+          clicks: earlyTotals.clicks,
+          conversions: earlyTotals.conversions,
+          position: earlyPosition,
+        },
       }}
     />
   );
@@ -199,7 +237,20 @@ async function ChartAndUrls({
   const runId = await getLatestRunId();
   if (!runId) return null;
   const [weekly, urls] = await Promise.all([
-    getClusterWeeklyMetrics(runId, clusterId, selectedWeeks),
+    // Chart: include previous week when only one is selected (for WoW visualization)
+    (async () => {
+      let weeks = selectedWeeks;
+      if (selectedWeeks.length === 1) {
+        const all = await getAvailableWeeks();
+        const idx = all.indexOf(selectedWeeks[0] as string);
+        if (idx >= 0 && idx + 1 < all.length) {
+          weeks = Array.from(
+            new Set([all[idx + 1] as string, selectedWeeks[0] as string]),
+          ) as string[];
+        }
+      }
+      return getClusterWeeklyMetrics(runId, clusterId, weeks);
+    })(),
     getClusterUrlsMetrics(runId, clusterId, selectedWeeks, 200, 0),
   ]);
 

@@ -141,15 +141,27 @@ export default async function Page({ searchParams }: PageProps) {
 }
 
 async function CardsSection({ selectedWeeks }: { selectedWeeks: string[] }) {
-  const weeklyMetrics = await getWeeklyMetrics(selectedWeeks);
+  // Base period metrics (exactly the selected weeks)
+  const weeklyBase = await getWeeklyMetrics(selectedWeeks);
 
-  const weeksSorted = [...selectedWeeks].sort((a, b) => a.localeCompare(b));
+  // Build delta period: if only 1 week selected, include the immediately previous available week
+  let deltaWeeks: string[] = selectedWeeks;
+  if (selectedWeeks.length === 1) {
+    const all = await getAvailableWeeks(); // cached
+    const idx = all.indexOf(selectedWeeks[0]);
+    if (idx >= 0 && idx + 1 < all.length) {
+      deltaWeeks = Array.from(new Set([all[idx + 1], selectedWeeks[0]]));
+    }
+  }
+  const weeklyForDelta = await getWeeklyMetrics(deltaWeeks);
+
+  const weeksSorted = [...deltaWeeks].sort((a, b) => a.localeCompare(b));
   const mid = Math.floor(weeksSorted.length / 2);
   const earlySet = new Set(weeksSorted.slice(0, mid));
   const lateSet = new Set(weeksSorted.slice(mid));
 
   // Calcular totais para early e late (para comparação/delta)
-  const periodTotals = (weeklyMetrics as WeeklyMetric[]).reduce(
+  const periodTotals = (weeklyForDelta as WeeklyMetric[]).reduce(
     (acc, w) => {
       if (!w.week_ending) return acc;
       const impr = w.gsc_impressions || 0;
@@ -182,31 +194,33 @@ async function CardsSection({ selectedWeeks }: { selectedWeeks: string[] }) {
       ? periodTotals.early._posWeighted / periodTotals.early.impressions
       : 0;
 
-  const allTimeImpressions = (weeklyMetrics as WeeklyMetric[]).reduce(
+  const allTimeImpressions = (weeklyBase as WeeklyMetric[]).reduce(
     (sum, week) => sum + (week.gsc_impressions || 0),
     0,
   );
-  const allTimeClicks = (weeklyMetrics as WeeklyMetric[]).reduce(
+  const allTimeClicks = (weeklyBase as WeeklyMetric[]).reduce(
     (sum, week) => sum + (week.gsc_clicks || 0),
     0,
   );
-  const allTimeConversions = (weeklyMetrics as WeeklyMetric[]).reduce(
+  const allTimeConversions = (weeklyBase as WeeklyMetric[]).reduce(
     (sum, week) => sum + (week.amplitude_conversions || 0),
     0,
   );
-  const allTimePositionWeighted = (weeklyMetrics as WeeklyMetric[]).reduce(
+  const allTimePositionWeighted = (weeklyBase as WeeklyMetric[]).reduce(
     (acc, w) => acc + (w.gsc_position || 0) * (w.gsc_impressions || 0),
     0,
   );
-  const allTimePosition = allTimeImpressions > 0 ? allTimePositionWeighted / allTimeImpressions : 0;
+  const allTimePosition = allTimeImpressions > 0
+    ? allTimePositionWeighted / allTimeImpressions
+    : 0;
 
   const averages =
-    (weeklyMetrics as WeeklyMetric[]).length > 0
+    (weeklyBase as WeeklyMetric[]).length > 0
       ? {
-          impressions: allTimeImpressions / weeklyMetrics.length,
-          clicks: allTimeClicks / weeklyMetrics.length,
+          impressions: allTimeImpressions / weeklyBase.length,
+          clicks: allTimeClicks / weeklyBase.length,
           position: allTimePosition,
-          conversions: allTimeConversions / weeklyMetrics.length,
+          conversions: allTimeConversions / weeklyBase.length,
         }
       : undefined;
 
@@ -236,7 +250,18 @@ async function ChartAndTable({
   clusterCreatedAt: string | null;
 }) {
   const [weeklyMetrics, clusterLeaderboard] = await Promise.all([
-    getWeeklyMetrics(selectedWeeks),
+    // Chart: include previous week when only one is selected for WoW
+    (async () => {
+      let weeks = selectedWeeks;
+      if (selectedWeeks.length === 1) {
+        const all = await getAvailableWeeks();
+        const idx = all.indexOf(selectedWeeks[0]);
+        if (idx >= 0 && idx + 1 < all.length) {
+          weeks = Array.from(new Set([all[idx + 1], selectedWeeks[0]]));
+        }
+      }
+      return getWeeklyMetrics(weeks);
+    })(),
     getClusterLeaderboard(runId, selectedWeeks),
   ]);
 

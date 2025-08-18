@@ -46,19 +46,14 @@ export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetr
     "gsc_impressions",
     "gsc_position",
   ]);
-  // KISS: sempre mostramos escala indexada (0–100). Tooltip mostra valores absolutos.
 
   const filteredData = React.useMemo<WeeklyMetric[]>(() => {
     if (!data || data.length === 0) return [];
 
-    // Sort data by week and prepare CTR as percentage
+    // Sort data by week (string ISO date) and prepare values
     const sortedData = [...data]
-      .filter((item) => item.week_ending) // Ensure week_ending exists
-      .sort((a, b) => {
-        const dateA = a.week_ending ? new Date(a.week_ending).getTime() : 0;
-        const dateB = b.week_ending ? new Date(b.week_ending).getTime() : 0;
-        return dateA - dateB;
-      })
+      .filter((item) => item.week_ending)
+      .sort((a, b) => (a.week_ending as string).localeCompare(b.week_ending as string))
       .map((item) => ({
         ...item,
         // Keep gsc_ctr as null to satisfy exactOptionalPropertyTypes while not using it
@@ -77,10 +72,14 @@ export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetr
         return sortedData;
       }
 
-      const startDate = new Date(firstItem.week_ending);
-      const endDate = new Date(lastItem.week_ending);
+      // Use UTC-midday to avoid timezone shifts and add days via timestamps
+      const parseUtcMid = (s: string) => new Date(`${s}T12:00:00Z`);
+      const addDays = (d: Date, days: number) => new Date(d.getTime() + days * 86400000);
 
-      const currentDate = new Date(startDate);
+      const startDate = parseUtcMid(firstItem.week_ending);
+      const endDate = parseUtcMid(lastItem.week_ending);
+
+      let currentDate = new Date(startDate.getTime());
       let dataIndex = 0;
 
       while (currentDate <= endDate) {
@@ -106,8 +105,8 @@ export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetr
           } as WeeklyMetric);
         }
 
-        // Move to next week (assuming week_ending is always Sunday)
-        currentDate.setDate(currentDate.getDate() + DAYS_PER_WEEK);
+        // Move to next week using ms arithmetic to keep UTC safe
+        currentDate = addDays(currentDate, DAYS_PER_WEEK);
       }
 
       return filledData;
@@ -149,6 +148,12 @@ export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetr
   }, [filteredData]);
 
   const chartData: NormalizedMetric[] = normalizedData;
+  // Label pluralization for week count (DRY)
+  const weeksCount = selectedWeeks.length;
+  const formatWeeksLabel = (fallback: string) =>
+    weeksCount > 0 ? `${weeksCount} ${weeksCount === 1 ? "semana" : "semanas"}` : fallback;
+  const desktopWeeksLabel = formatWeeksLabel("32 semanas");
+  const mobileWeeksLabel = formatWeeksLabel("Todas as semanas");
 
   return (
     <Card className="@container/card">
@@ -156,14 +161,13 @@ export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetr
         <CardTitle>Métricas Semanais</CardTitle>
         <CardDescription>
           <span className="hidden @[540px]/card:block">
-            {selectedWeeks.length > 0 ? `${selectedWeeks.length} semanas` : "32 semanas"} | Indexado
-            em 0-100
+            {desktopWeeksLabel} | Indexado em 0-100
             {filteredData.some((d) => d.gsc_clicks === null) && (
               <span className="ml-2 text-destructive">⚠️ Dados faltando em algumas semanas</span>
             )}
           </span>
           <span className="@[540px]/card:hidden">
-            {selectedWeeks.length > 0 ? `${selectedWeeks.length} semanas` : "Todas as semanas"}
+            {mobileWeeksLabel}
             {filteredData.some((d) => d.gsc_clicks === null) && " ⚠️"}
           </span>
         </CardDescription>
@@ -206,11 +210,10 @@ export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetr
               tickMargin={8}
               minTickGap={32}
               tickFormatter={(value: string) => {
-                const date = new Date(value);
-                // Format as "Sem DD/MM" for week ending dates
-                return `Sem ${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1)
-                  .toString()
-                  .padStart(2, "0")}`;
+                // Show week ending date to emphasize "semana por semana"
+                const [y, m, d] = (value || "").split("-");
+                if (!y || !m || !d) return value;
+                return `Sem ${d}/${m}`;
               }}
             />
             {/* Single Y-axis for all metrics */}
@@ -220,13 +223,13 @@ export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetr
               content={
                 <ChartTooltipContent
                   labelFormatter={(value: string) => {
-                    const date = new Date(value);
-                    // Keep same format as X axis: "Sem DD/MM/YYYY"
-                    const day = date.getDate().toString().padStart(2, "0");
-                    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-                    const year = date.getFullYear();
-
-                    return `Semana ${day}/${month}/${year}`;
+                    const [y, m, d] = (value || "").split("-");
+                    if (!y || !m || !d) return value;
+                    const endLabel = `Semana ${d}/${m}/${y}`;
+                    if (selectedWeeks.length === 1) {
+                      return `${endLabel}${value === selectedWeeks[0] ? " (Atual)" : " (Anterior)"}`;
+                    }
+                    return endLabel;
                   }}
                   formatter={(value, name, item) => {
                     // Skip null values

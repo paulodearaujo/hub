@@ -6,10 +6,10 @@ import {
   IconDatabase,
   IconFileAi,
   IconFileDescription,
-  IconFlask,
   IconFolder,
   IconPlant,
 } from "@tabler/icons-react";
+import Image from "next/image";
 import type * as React from "react";
 
 import { NavDocuments } from "@/components/nav-documents";
@@ -132,13 +132,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <HoverCardTrigger asChild>
               <span className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-default">
                 InLab
-                <IconFlask className="!size-3" />
+                <Image
+                  src="/postcss.svg"
+                  alt="PostCSS"
+                  width={12}
+                  height={12}
+                  className="opacity-70"
+                />
               </span>
             </HoverCardTrigger>
             <HoverCardContent side="right" className="w-80">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <IconFlask className="size-5 text-primary" />
+                  <Image src="/postcss.svg" alt="PostCSS" width={20} height={20} />
                   <h4 className="text-sm font-semibold">InLab | TRSC</h4>
                 </div>
                 <p className="text-sm text-muted-foreground italic">

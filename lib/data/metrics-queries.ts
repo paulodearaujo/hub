@@ -1,5 +1,8 @@
 import type { Database, Tables } from "@/lib/database.types";
-import { createClient as createSbClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  createClient as createSbClient,
+  type SupabaseClient,
+} from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
 
 // Reuse TCP connections to Supabase (lower TTFB) when running in Node with Undici available.
@@ -9,14 +12,17 @@ try {
   const maybeUndici = (
     globalThis as unknown as {
       fetch?: {
-        __next_internal_get_undici_agent?: { setGlobalDispatcher?: unknown; Agent?: unknown };
+        __next_internal_get_undici_agent?: {
+          setGlobalDispatcher?: unknown;
+          Agent?: unknown;
+        };
       };
     }
   )?.fetch?.["__next_internal_get_undici_agent"] as
     | {
-        setGlobalDispatcher?: (d: unknown) => void;
-        Agent?: new (opts: Record<string, number>) => unknown;
-      }
+      setGlobalDispatcher?: (d: unknown) => void;
+      Agent?: new (opts: Record<string, number>) => unknown;
+    }
     | undefined;
   if (maybeUndici?.setGlobalDispatcher && maybeUndici?.Agent) {
     const { setGlobalDispatcher, Agent } = maybeUndici;
@@ -49,12 +55,37 @@ function createAccum(): Accumulator {
 }
 
 function splitWeeksSets(selectedWeeks?: string[]) {
-  const weeksSorted = (selectedWeeks || []).slice().sort((a, b) => a.localeCompare(b));
+  const weeksSorted = (selectedWeeks || []).slice().sort((a, b) =>
+    a.localeCompare(b)
+  );
   const middleIndex = Math.floor(weeksSorted.length / 2);
   return {
     early: new Set(weeksSorted.slice(0, middleIndex)),
     late: new Set(weeksSorted.slice(middleIndex)),
   } as const;
+}
+
+/**
+ * Ensure we have at least two weeks for delta comparison.
+ * When a single week is selected, include the immediately previous
+ * available week (older) only for delta calculations. This MUST NOT
+ * contaminate period totals, so consumers should still aggregate base
+ * metrics exclusively from the originally selected weeks.
+ */
+async function weeksForDelta(
+  selectedWeeks?: string[],
+): Promise<string[] | undefined> {
+  if (!selectedWeeks || selectedWeeks.length === 0) return selectedWeeks;
+  if (selectedWeeks.length > 1) return selectedWeeks;
+  const target = selectedWeeks[0] as string;
+  const all = await getAvailableWeeks(); // Sorted desc (newest -> oldest)
+  const idx = all.indexOf(target);
+  if (idx >= 0 && idx + 1 < all.length) {
+    const prev = all[idx + 1] as string;
+    // Return union (target + previous). Order does not matter; splitWeeksSets sorts.
+    return Array.from(new Set([target, prev])) as string[];
+  }
+  return selectedWeeks;
 }
 
 const BATCH_SIZE = 1000; // Limite de paginação do Supabase
@@ -71,11 +102,10 @@ const METRICS_SELECT =
 // Supabase client (stateless) – sem cookies/sessão
 function createPublicClient(): SupabaseClient<Database> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY;
   if (!url || !anon) throw new Error("Missing Supabase public env vars");
-  return createSbClient<Database>(url, anon, {
+  return createSbClient<Database>(url as string, anon as string, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { "x-app": "dashboard-inbound" } },
   });
@@ -164,7 +194,9 @@ async function fetchArticleMetrics(
   const allData: BlogArticlesMetrics[] = [];
 
   // Quando possível, filtramos por URLs do run atual para reduzir drasticamente o payload
-  const urlChunks = urls && urls.length > 0 ? chunkArray(urls, 500) : [undefined];
+  const urlChunks = urls && urls.length > 0
+    ? chunkArray(urls, 500)
+    : [undefined];
 
   for (const urlChunk of urlChunks) {
     const batchSize = BATCH_SIZE;
@@ -206,43 +238,55 @@ async function fetchArticleMetrics(
 }
 
 function aggregateWeekly(allData: BlogArticlesMetrics[]): WeeklyAggregateRow[] {
-  const weekly = allData.reduce<Record<string, WeeklyAggregated>>((acc, item) => {
-    const week = item.week_ending;
-    if (!acc[week]) {
-      acc[week] = {
-        week_ending: week,
-        gsc_clicks: 0,
-        gsc_impressions: 0,
-        amplitude_conversions: 0,
-        gsc_ctr: 0,
-        gsc_position: 0,
-        gsc_ctr_weighted: 0,
-        gsc_position_weighted: 0,
-        count: 0,
-      };
-    }
-    const w = acc[week];
-    w.gsc_clicks += item.gsc_clicks || 0;
-    w.gsc_impressions += item.gsc_impressions || 0;
-    w.amplitude_conversions += item.amplitude_conversions || 0;
-    w.gsc_ctr_weighted += (item.gsc_ctr || 0) * (item.gsc_impressions || 0);
-    w.gsc_position_weighted += (item.gsc_position || 0) * (item.gsc_impressions || 0);
-    w.count += 1;
-    return acc;
-  }, {});
+  const weekly = allData.reduce<Record<string, WeeklyAggregated>>(
+    (acc, item) => {
+      const week = item.week_ending;
+      if (!acc[week]) {
+        acc[week] = {
+          week_ending: week,
+          gsc_clicks: 0,
+          gsc_impressions: 0,
+          amplitude_conversions: 0,
+          gsc_ctr: 0,
+          gsc_position: 0,
+          gsc_ctr_weighted: 0,
+          gsc_position_weighted: 0,
+          count: 0,
+        };
+      }
+      const wExisting = acc[week];
+      if (!wExisting) return acc;
+      const w = wExisting;
+      w.gsc_clicks += item.gsc_clicks || 0;
+      w.gsc_impressions += item.gsc_impressions || 0;
+      w.amplitude_conversions += item.amplitude_conversions || 0;
+      w.gsc_ctr_weighted += (item.gsc_ctr || 0) * (item.gsc_impressions || 0);
+      w.gsc_position_weighted += (item.gsc_position || 0) *
+        (item.gsc_impressions || 0);
+      w.count += 1;
+      return acc;
+    },
+    {},
+  );
 
   return Object.values(weekly).map((week) => ({
     week_ending: week.week_ending,
     gsc_clicks: week.gsc_clicks,
     gsc_impressions: week.gsc_impressions,
     amplitude_conversions: week.amplitude_conversions,
-    gsc_ctr: week.gsc_impressions > 0 ? week.gsc_ctr_weighted / week.gsc_impressions : 0,
-    gsc_position: week.gsc_impressions > 0 ? week.gsc_position_weighted / week.gsc_impressions : 0,
+    gsc_ctr: week.gsc_impressions > 0
+      ? week.gsc_ctr_weighted / week.gsc_impressions
+      : 0,
+    gsc_position: week.gsc_impressions > 0
+      ? week.gsc_position_weighted / week.gsc_impressions
+      : 0,
   }));
 }
 
 export async function getLatestRunId() {
-  const devBypass = process.env.NODE_ENV !== "production" ? String(Date.now()) : "";
+  const devBypass = process.env.NODE_ENV !== "production"
+    ? String(Date.now())
+    : "";
   return unstable_cache(
     async () => {
       const supabase = createPublicClient();
@@ -261,7 +305,9 @@ export async function getLatestRunId() {
 }
 
 export async function getRunMetadata(runId: string) {
-  const devBypass = process.env.NODE_ENV !== "production" ? String(Date.now()) : "";
+  const devBypass = process.env.NODE_ENV !== "production"
+    ? String(Date.now())
+    : "";
   return unstable_cache(
     async () => {
       const supabase = createPublicClient();
@@ -335,7 +381,9 @@ export async function getClusterMetrics(runId: string) {
 
 export async function getAvailableWeeks() {
   const version = await getWeeksVersion();
-  const devBypass = process.env.NODE_ENV !== "production" ? String(Date.now()) : "";
+  const devBypass = process.env.NODE_ENV !== "production"
+    ? String(Date.now())
+    : "";
   return unstable_cache(
     async () => {
       const supabase = createPublicClient();
@@ -363,7 +411,9 @@ export async function getAvailableWeeks() {
           offset += batchSize;
         }
       }
-      const weeksArray = Array.from(uniqueWeeks).sort((a, b) => b.localeCompare(a));
+      const weeksArray = Array.from(uniqueWeeks).sort((a, b) =>
+        b.localeCompare(a)
+      );
       return weeksArray as string[];
     },
     ["data:getAvailableWeeks", version, devBypass],
@@ -374,7 +424,9 @@ export async function getAvailableWeeks() {
 export async function getWeeklyMetrics(selectedWeeks?: string[]) {
   const version = await getWeeksVersion();
   const weeksKey = weeksKeyOf(selectedWeeks);
-  const devBypass = process.env.NODE_ENV !== "production" ? String(Date.now()) : "";
+  const devBypass = process.env.NODE_ENV !== "production"
+    ? String(Date.now())
+    : "";
   return unstable_cache(
     async () => {
       const allData = await fetchArticleMetrics(selectedWeeks);
@@ -385,9 +437,16 @@ export async function getWeeklyMetrics(selectedWeeks?: string[]) {
   )();
 }
 
-export async function getClusterLeaderboard(runId: string, selectedWeeks?: string[]) {
+export async function getClusterLeaderboard(
+  runId: string,
+  selectedWeeks?: string[],
+) {
   const version = await getWeeksVersion();
-  const devBypass = process.env.NODE_ENV !== "production" ? String(Date.now()) : "";
+  const devBypass = process.env.NODE_ENV !== "production"
+    ? String(Date.now())
+    : "";
+  // Use a composite cache key to separate base period vs delta comparison period
+  const deltaWeeks = await weeksForDelta(selectedWeeks);
   return unstable_cache(
     async () => {
       const supabase = createPublicClient();
@@ -395,7 +454,9 @@ export async function getClusterLeaderboard(runId: string, selectedWeeks?: strin
         supabase.from("blog_cluster_metrics").select("*").eq("run_id", runId),
         (async () => {
           // Read ALL cluster rows for the run (Supabase returns max 1k rows per page)
-          const rows: Array<{ cluster_id: number; cluster_name: string | null; url: string }> = [];
+          const rows: Array<
+            { cluster_id: number; cluster_name: string | null; url: string }
+          > = [];
           let offset = 0;
           const page = BATCH_SIZE;
           // Explicit order for stable pagination
@@ -423,12 +484,8 @@ export async function getClusterLeaderboard(runId: string, selectedWeeks?: strin
         urlToClusterId.set(c.url, c.cluster_id);
       }
 
-      // Fetch all metrics without URL filtering to ensure complete data retrieval
-      // This avoids pagination issues that could occur with large URL lists
-      // Filtering by cluster URLs is done in-memory during aggregation below
-      const articleMetrics = await fetchArticleMetrics(selectedWeeks);
-
-      const { early: earlyWeeksSet, late: lateWeeksSet } = splitWeeksSets(selectedWeeks);
+      // Base period metrics: strictly from selected weeks
+      const articleMetricsBase = await fetchArticleMetrics(selectedWeeks);
 
       // Prepare cluster containers with metadata
       const clusterMap = new Map<
@@ -457,9 +514,10 @@ export async function getClusterLeaderboard(runId: string, selectedWeeks?: strin
           );
           clusterMap.set(c.cluster_id, {
             cluster_id: c.cluster_id,
-            cluster_name:
-              c.cluster_name ||
-              (c.cluster_id === OUTLIER_CLUSTER_ID ? "Outliers" : `Cluster ${c.cluster_id}`),
+            cluster_name: c.cluster_name ||
+              (c.cluster_id === OUTLIER_CLUSTER_ID
+                ? "Outliers"
+                : `Cluster ${c.cluster_id}`),
             cluster_size: meta?.cluster_size || 0,
             cluster_coherence: meta?.cluster_coherence || 0,
             cluster_density: meta?.cluster_density || 0,
@@ -480,8 +538,8 @@ export async function getClusterLeaderboard(runId: string, selectedWeeks?: strin
         }
       }
 
-      // Single pass over article metrics – attribute each row to the correct cluster
-      for (const m of articleMetrics) {
+      // Aggregate base period totals
+      for (const m of articleMetricsBase) {
         const url = m.url as string | undefined;
         if (!url) continue;
         const cid = urlToClusterId.get(url);
@@ -498,14 +556,31 @@ export async function getClusterLeaderboard(runId: string, selectedWeeks?: strin
         target.gsc_impressions += impr;
         target.amplitude_conversions += conv;
         target._pos_weighted += posWeighted;
+      }
+
+      // Delta period: may include previous week when only one week selected
+      const deltaSets = splitWeeksSets(deltaWeeks);
+      const articleMetricsForDelta = await fetchArticleMetrics(deltaWeeks);
+      for (const m of articleMetricsForDelta) {
+        const url = m.url as string | undefined;
+        if (!url) continue;
+        const cid = urlToClusterId.get(url);
+        if (cid === undefined) continue;
+        const target = clusterMap.get(cid);
+        if (!target) continue;
+
+        const clicks = m.gsc_clicks || 0;
+        const impr = m.gsc_impressions || 0;
+        const conv = m.amplitude_conversions || 0;
+        const posWeighted = (m.gsc_position || 0) * impr;
 
         const w = m.week_ending as string | undefined;
-        if (w && earlyWeeksSet.has(w)) {
+        if (w && deltaSets.early.has(w)) {
           target._early.clicks += clicks;
           target._early.impressions += impr;
           target._early.conversions += conv;
           target._early.posWeighted += posWeighted;
-        } else if (w && lateWeeksSet.has(w)) {
+        } else if (w && deltaSets.late.has(w)) {
           target._late.clicks += clicks;
           target._late.impressions += impr;
           target._late.conversions += conv;
@@ -513,32 +588,49 @@ export async function getClusterLeaderboard(runId: string, selectedWeeks?: strin
         }
       }
 
-      const leaderboard: ClusterLeaderboardRow[] = Array.from(clusterMap.values()).map(
+      const leaderboard: ClusterLeaderboardRow[] = Array.from(
+        clusterMap.values(),
+      ).map(
         (cluster) => {
-          const gsc_ctr =
-            cluster.gsc_impressions > 0 ? cluster.gsc_clicks / cluster.gsc_impressions : 0;
-          const gsc_position =
-            cluster.gsc_impressions > 0 ? cluster._pos_weighted / cluster.gsc_impressions : 0;
+          const gsc_ctr = cluster.gsc_impressions > 0
+            ? cluster.gsc_clicks / cluster.gsc_impressions
+            : 0;
+          const gsc_position = cluster.gsc_impressions > 0
+            ? cluster._pos_weighted / cluster.gsc_impressions
+            : 0;
           const earlyClicks = cluster._early.clicks;
           const lateClicks = cluster._late.clicks;
           const earlyImpr = cluster._early.impressions;
           const lateImpr = cluster._late.impressions;
           const earlyConv = cluster._early.conversions;
           const lateConv = cluster._late.conversions;
-          const earlyPos = earlyImpr > 0 ? cluster._early.posWeighted / earlyImpr : 0;
-          const latePos = lateImpr > 0 ? cluster._late.posWeighted / lateImpr : 0;
+          const earlyPos = earlyImpr > 0
+            ? cluster._early.posWeighted / earlyImpr
+            : 0;
+          const latePos = lateImpr > 0
+            ? cluster._late.posWeighted / lateImpr
+            : 0;
           const clicks_delta = lateClicks - earlyClicks;
-          const clicks_delta_pct = earlyClicks > 0 ? clicks_delta / earlyClicks : 0;
+          const clicks_delta_pct = earlyClicks > 0
+            ? clicks_delta / earlyClicks
+            : 0;
           const impressions_delta = lateImpr - earlyImpr;
-          const impressions_delta_pct = earlyImpr > 0 ? impressions_delta / earlyImpr : 0;
+          const impressions_delta_pct = earlyImpr > 0
+            ? impressions_delta / earlyImpr
+            : 0;
           const conversions_delta = lateConv - earlyConv;
-          const conversions_delta_pct = earlyConv > 0 ? conversions_delta / earlyConv : 0;
+          const conversions_delta_pct = earlyConv > 0
+            ? conversions_delta / earlyConv
+            : 0;
           const position_delta = earlyPos - latePos;
-          const position_delta_pct = earlyPos > 0 ? position_delta / earlyPos : 0;
+          const position_delta_pct = earlyPos > 0
+            ? position_delta / earlyPos
+            : 0;
           return {
             ...cluster,
             // Prefer metric cluster_size; fallback to collected URL count if missing
-            cluster_size: cluster.cluster_size || (cluster.urls ? cluster.urls.length : 0),
+            cluster_size: cluster.cluster_size ||
+              (cluster.urls ? cluster.urls.length : 0),
             gsc_ctr,
             gsc_position,
             gsc_clicks_delta: clicks_delta,
@@ -554,7 +646,15 @@ export async function getClusterLeaderboard(runId: string, selectedWeeks?: strin
       );
       return leaderboard.sort((a, b) => b.gsc_clicks - a.gsc_clicks);
     },
-    ["data:getClusterLeaderboard", "v2.1", runId, version, weeksKeyOf(selectedWeeks), devBypass],
+    [
+      "data:getClusterLeaderboard",
+      "v2.2",
+      runId,
+      version,
+      `sel:${weeksKeyOf(selectedWeeks)}`,
+      `delta:${weeksKeyOf(deltaWeeks)}`,
+      devBypass,
+    ],
     { revalidate: WEEKLY_REVALIDATE_SECONDS },
   )();
 }
@@ -614,12 +714,13 @@ export async function getClusterInfo(runId: string, clusterId: number) {
   }
 
   const urls = (clusters || []).map((c) => c.url);
-  const clusterName = (clusters || []).find((c) => !!c.cluster_name)?.cluster_name;
+  const clusterName = (clusters || []).find((c) => !!c.cluster_name)
+    ?.cluster_name;
 
   return {
     cluster_id: clusterId,
-    cluster_name:
-      clusterName || (clusterId === OUTLIER_CLUSTER_ID ? "Outliers" : `Cluster ${clusterId}`),
+    cluster_name: clusterName ||
+      (clusterId === OUTLIER_CLUSTER_ID ? "Outliers" : `Cluster ${clusterId}`),
     cluster_size: metric?.cluster_size ?? urls.length,
     cluster_coherence: metric?.cluster_coherence ?? 0,
     cluster_density: metric?.cluster_density ?? 0,
@@ -641,7 +742,7 @@ export async function getClusterWeeklyMetrics(
   const version = await getWeeksVersion();
   const info = await getClusterInfo(runId, clusterId);
   const urls = info?.urls || [];
-  if (urls.length === 0)
+  if (urls.length === 0) {
     return [] as Array<
       Pick<
         WeeklyAggregated,
@@ -653,8 +754,11 @@ export async function getClusterWeeklyMetrics(
         | "gsc_position"
       >
     >;
+  }
   const allData = await fetchArticleMetrics(selectedWeeks, urls);
-  const devBypass = process.env.NODE_ENV !== "production" ? String(Date.now()) : "";
+  const devBypass = process.env.NODE_ENV !== "production"
+    ? String(Date.now())
+    : "";
   return unstable_cache(
     async () => aggregateWeekly(allData),
     [
@@ -704,14 +808,22 @@ export async function getClusterUrlsMetrics(
   const info = await getClusterInfo(runId, clusterId);
   const urls = info?.urls || [];
   if (urls.length === 0) return [] as ClusterUrlAggregates[];
+  // Base period data (only selected weeks) – used for main totals
   const allData = await fetchArticleMetrics(selectedWeeks, urls);
 
   // Prepare early/late buckets
-  const { early: earlyWeeksSet, late: lateWeeksSet } = splitWeeksSets(selectedWeeks);
+  const deltaWeeks = await weeksForDelta(selectedWeeks);
+  const { early: earlyWeeksSet, late: lateWeeksSet } = splitWeeksSets(
+    deltaWeeks,
+  );
+  const allDataForDelta = await fetchArticleMetrics(deltaWeeks, urls);
 
-  // Aggregate by URL
+  // Aggregate by URL (base totals)
   const perUrl = allData.reduce<
-    Record<string, ClusterUrlAggregates & { _ctr_weighted: number; _pos_weighted: number }>
+    Record<
+      string,
+      ClusterUrlAggregates & { _ctr_weighted: number; _pos_weighted: number }
+    >
   >((acc, item) => {
     const key = item.url as string;
     if (!key) return acc;
@@ -736,7 +848,9 @@ export async function getClusterUrlsMetrics(
         gsc_position_delta_pct: 0,
       };
     }
-    const u = acc[key];
+    const uExisting = acc[key];
+    if (!uExisting) return acc;
+    const u = uExisting;
     u.gsc_clicks += item.gsc_clicks || 0;
     u.gsc_impressions += item.gsc_impressions || 0;
     u.amplitude_conversions += item.amplitude_conversions || 0;
@@ -745,10 +859,10 @@ export async function getClusterUrlsMetrics(
     return acc;
   }, {});
 
-  // Compute deltas per URL using early vs late buckets
+  // Compute deltas per URL using early vs late buckets over delta dataset
   const earlyAgg: Record<string, Accumulator> = {};
   const lateAgg: Record<string, Accumulator> = {};
-  for (const item of allData) {
+  for (const item of allDataForDelta) {
     const key = item.url as string;
     if (!key) continue;
     const isEarly = item.week_ending && earlyWeeksSet.has(item.week_ending);
@@ -756,16 +870,17 @@ export async function getClusterUrlsMetrics(
     let target: Accumulator | null = null;
     if (isEarly) {
       if (!earlyAgg[key]) earlyAgg[key] = createAccum();
-      target = earlyAgg[key];
+      target = earlyAgg[key] ?? null;
     } else if (isLate) {
       if (!lateAgg[key]) lateAgg[key] = createAccum();
-      target = lateAgg[key];
+      target = lateAgg[key] ?? null;
     }
     if (!target) continue;
     target.clicks += item.gsc_clicks || 0;
     target.impressions += item.gsc_impressions || 0;
     target.conversions += item.amplitude_conversions || 0;
-    target.posWeighted += (item.gsc_position || 0) * (item.gsc_impressions || 0);
+    target.posWeighted += (item.gsc_position || 0) *
+      (item.gsc_impressions || 0);
   }
 
   let rows: ClusterUrlAggregates[] = Object.values(perUrl).map((u) => {
@@ -780,21 +895,30 @@ export async function getClusterUrlsMetrics(
       gsc_impressions: u.gsc_impressions,
       amplitude_conversions: u.amplitude_conversions,
       gsc_ctr: u.gsc_impressions > 0 ? u._ctr_weighted / u.gsc_impressions : 0,
-      gsc_position: u.gsc_impressions > 0 ? u._pos_weighted / u.gsc_impressions : 0,
+      gsc_position: u.gsc_impressions > 0
+        ? u._pos_weighted / u.gsc_impressions
+        : 0,
       gsc_clicks_delta: l.clicks - e.clicks,
       gsc_clicks_delta_pct: e.clicks > 0 ? (l.clicks - e.clicks) / e.clicks : 0,
       gsc_impressions_delta: l.impressions - e.impressions,
-      gsc_impressions_delta_pct:
-        e.impressions > 0 ? (l.impressions - e.impressions) / e.impressions : 0,
+      gsc_impressions_delta_pct: e.impressions > 0
+        ? (l.impressions - e.impressions) / e.impressions
+        : 0,
       amplitude_conversions_delta: l.conversions - e.conversions,
-      amplitude_conversions_delta_pct:
-        e.conversions > 0 ? (l.conversions - e.conversions) / e.conversions : 0,
+      amplitude_conversions_delta_pct: e.conversions > 0
+        ? (l.conversions - e.conversions) / e.conversions
+        : 0,
       gsc_position_delta: posEarly - posLate,
-      gsc_position_delta_pct: posEarly > 0 ? (posEarly - posLate) / posEarly : 0,
+      gsc_position_delta_pct: posEarly > 0
+        ? (posEarly - posLate) / posEarly
+        : 0,
     };
   });
 
-  rows = rows.sort((a, b) => b.gsc_clicks - a.gsc_clicks).slice(offset, offset + limit);
+  rows = rows.sort((a, b) => b.gsc_clicks - a.gsc_clicks).slice(
+    offset,
+    offset + limit,
+  );
 
   // Enriquecer com nomes
   const urlPage = rows.map((r) => r.url);
@@ -805,12 +929,14 @@ export async function getClusterUrlsMetrics(
       .in("url", urlPage);
     const nameMap = new Map<string, string | null>();
     (articles || []).forEach((a: { url: string; name: string | null }) =>
-      nameMap.set(a.url, a.name),
+      nameMap.set(a.url, a.name)
     );
     rows = rows.map((r) => ({ ...r, name: nameMap.get(r.url) ?? r.name }));
   }
 
-  const devBypass = process.env.NODE_ENV !== "production" ? String(Date.now()) : "";
+  const devBypass = process.env.NODE_ENV !== "production"
+    ? String(Date.now())
+    : "";
   return unstable_cache(
     async () => rows,
     [

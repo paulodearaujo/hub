@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { IconChartBar } from "@tabler/icons-react";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -20,7 +21,7 @@ export default function Home() {
       <div className="max-w-md w-full text-center space-y-6">
         <div className="flex justify-center">
           <div className="p-4 rounded-full bg-primary/10">
-            <IconChartBar className="size-12 text-primary" />
+            <Image src="/postcss.svg" alt="PostCSS" width={48} height={48} />
           </div>
         </div>
         <div className="space-y-2">
