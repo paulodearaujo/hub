@@ -1,5 +1,7 @@
 "use client";
 
+import * as React from "react";
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import {
   Card,
   CardAction,
@@ -12,8 +14,6 @@ import type { ChartConfig } from "@/components/ui/chart";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { Tables } from "@/lib/database.types";
-import * as React from "react";
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
 // Constantes de configuração
 const DAYS_PER_WEEK = 7;

@@ -148,9 +148,10 @@ async function CardsSection({ selectedWeeks }: { selectedWeeks: string[] }) {
   let deltaWeeks: string[] = selectedWeeks;
   if (selectedWeeks.length === 1) {
     const all = await getAvailableWeeks(); // cached
-    const idx = all.indexOf(selectedWeeks[0]);
+    const current = selectedWeeks[0] as string;
+    const idx = all.indexOf(current);
     if (idx >= 0 && idx + 1 < all.length) {
-      deltaWeeks = Array.from(new Set([all[idx + 1], selectedWeeks[0]]));
+      deltaWeeks = Array.from(new Set([all[idx + 1] as string, current])) as string[];
     }
   }
   const weeklyForDelta = await getWeeklyMetrics(deltaWeeks);
@@ -210,9 +211,7 @@ async function CardsSection({ selectedWeeks }: { selectedWeeks: string[] }) {
     (acc, w) => acc + (w.gsc_position || 0) * (w.gsc_impressions || 0),
     0,
   );
-  const allTimePosition = allTimeImpressions > 0
-    ? allTimePositionWeighted / allTimeImpressions
-    : 0;
+  const allTimePosition = allTimeImpressions > 0 ? allTimePositionWeighted / allTimeImpressions : 0;
 
   const averages =
     (weeklyBase as WeeklyMetric[]).length > 0
@@ -255,9 +254,10 @@ async function ChartAndTable({
       let weeks = selectedWeeks;
       if (selectedWeeks.length === 1) {
         const all = await getAvailableWeeks();
-        const idx = all.indexOf(selectedWeeks[0]);
+        const current = selectedWeeks[0] as string;
+        const idx = all.indexOf(current);
         if (idx >= 0 && idx + 1 < all.length) {
-          weeks = Array.from(new Set([all[idx + 1], selectedWeeks[0]]));
+          weeks = Array.from(new Set([all[idx + 1] as string, current])) as string[];
         }
       }
       return getWeeklyMetrics(weeks);

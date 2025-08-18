@@ -1,5 +1,6 @@
 "use client";
 
+import { IconClick, IconEye, IconInnerShadowTop, IconShoppingCart } from "@tabler/icons-react";
 import {
   Card,
   CardAction,
@@ -9,7 +10,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Delta } from "@/components/ui/delta";
-import { IconClick, IconEye, IconInnerShadowTop, IconShoppingCart } from "@tabler/icons-react";
 
 // Tipo base para métricas agregadas
 type AggregatedMetrics = {

@@ -1,7 +1,7 @@
 "use client";
 
-import { SiteHeader } from "@/components/site-header";
 import * as React from "react";
+import { SiteHeader } from "@/components/site-header";
 
 interface DashboardWrapperProps {
   availableWeeks: string[];

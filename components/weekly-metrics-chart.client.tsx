@@ -1,7 +1,7 @@
 "use client";
 
-import type { Tables } from "@/lib/database.types";
 import dynamic from "next/dynamic";
+import type { Tables } from "@/lib/database.types";
 
 type WeeklyMetric = Partial<Tables<"blog_articles_metrics">>;
 
@@ -28,4 +28,3 @@ const Inner = dynamic(
 export default function WeeklyMetricsChartClient(props: WeeklyMetricsChartClientProps) {
   return <Inner {...props} />;
 }
-

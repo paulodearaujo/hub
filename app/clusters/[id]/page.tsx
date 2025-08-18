@@ -1,3 +1,6 @@
+import type { Metadata, ResolvingMetadata } from "next";
+import dynamic from "next/dynamic";
+import { Suspense } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import {
@@ -9,9 +12,6 @@ import {
   getRunMetadata,
 } from "@/lib/data/metrics-queries";
 import type { Tables } from "@/lib/database.types";
-import type { Metadata, ResolvingMetadata } from "next";
-import dynamic from "next/dynamic";
-import { Suspense } from "react";
 
 const CARD_SKELETON_KEYS = ["sk1", "sk2", "sk3", "sk4"] as const;
 

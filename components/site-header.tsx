@@ -1,15 +1,15 @@
 "use client";
 
+import { IconCalendar, IconRefresh } from "@tabler/icons-react";
+import { format, parseISO, startOfWeek } from "date-fns";
+import { useRouter } from "next/navigation";
+import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { IconCalendar, IconRefresh } from "@tabler/icons-react";
-import { format, parseISO, startOfWeek } from "date-fns";
-import { useRouter } from "next/navigation";
-import * as React from "react";
 
 interface SiteHeaderProps {
   availableWeeks?: string[];
