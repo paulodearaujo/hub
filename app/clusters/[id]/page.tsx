@@ -1,6 +1,3 @@
-import type { Metadata, ResolvingMetadata } from "next";
-import dynamic from "next/dynamic";
-import { Suspense } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import {
@@ -12,6 +9,9 @@ import {
   getRunMetadata,
 } from "@/lib/data/metrics-queries";
 import type { Tables } from "@/lib/database.types";
+import type { Metadata, ResolvingMetadata } from "next";
+import dynamic from "next/dynamic";
+import { Suspense } from "react";
 
 const CARD_SKELETON_KEYS = ["sk1", "sk2", "sk3", "sk4"] as const;
 
@@ -137,7 +137,11 @@ export default async function Page({ params, searchParams }: PageProps) {
                   </div>
                 }
               >
-                <ChartAndUrls clusterId={clusterId} selectedWeeks={selectedWeeks} />
+                <ChartAndUrls
+                  clusterId={clusterId}
+                  selectedWeeks={selectedWeeks}
+                  clusterName={info?.cluster_name || `Cluster ${id}`}
+                />
               </Suspense>
             </div>
           </div>
@@ -230,9 +234,11 @@ async function CardsSection({
 async function ChartAndUrls({
   clusterId,
   selectedWeeks,
+  clusterName,
 }: {
   clusterId: number;
   selectedWeeks: string[];
+  clusterName: string;
 }) {
   const runId = await getLatestRunId();
   if (!runId) return null;
@@ -259,7 +265,7 @@ async function ChartAndUrls({
       <div className="px-4 lg:px-6">
         <WeeklyMetricsChart data={weekly} selectedWeeks={selectedWeeks} />
       </div>
-      <ClusterUrlsTable data={urls} />
+      <ClusterUrlsTable data={urls} clusterName={clusterName} />
     </>
   );
 }

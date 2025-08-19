@@ -30,7 +30,9 @@ import {
   IconArrowDown,
   IconArrowsUpDown,
   IconArrowUp,
+  IconDownload,
   IconExternalLink,
+  IconPencil,
   IconSearch,
 } from "@tabler/icons-react";
 import type {
@@ -52,21 +54,17 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import * as React from "react";
 
-// Helper: width/alignment classes per column id to avoid duplication
+// Helper: width/alignment classes per column id (simpler & DRY)
+const COLUMN_CLASS: Record<string, string> = {
+  select: "text-left w-[44px] px-4",
+  name: "text-left w-[40%] px-4",
+  amplitude_conversions: "text-right w-[15%] px-4",
+  gsc_impressions: "text-right w-[15%] px-4",
+  gsc_clicks: "text-right w-[15%] px-4",
+  gsc_position: "text-right w-[15%] px-4",
+};
 function getColumnClass(id: string): string {
-  return id === "select"
-    ? "text-left w-[44px] px-4"
-    : id === "amplitude_conversions"
-      ? "text-right w-[15%] px-4"
-      : id === "gsc_impressions"
-        ? "text-right w-[15%] px-4"
-        : id === "gsc_clicks"
-          ? "text-right w-[15%] px-4"
-          : id === "gsc_position"
-            ? "text-right w-[15%] px-4"
-            : id === "name"
-              ? "text-left w-[40%] px-4"
-              : "text-left";
+  return COLUMN_CLASS[id] ?? "text-left";
 }
 
 // Helper: sortable header button with arrows
@@ -110,6 +108,22 @@ function renderCells(row: Row<ClusterUrlAggregates>) {
       </TableCell>
     );
   });
+}
+
+// Small utilities reused across actions
+function escapeCSV(value: string): string {
+  const v = value ?? "";
+  if (/[",\n]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
+  return v;
+}
+function sanitizeForFilename(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
 }
 
 const columns: ColumnDef<ClusterUrlAggregates>[] = [
@@ -241,7 +255,13 @@ const columns: ColumnDef<ClusterUrlAggregates>[] = [
   },
 ];
 
-export function ClusterUrlsTable({ data = [] as ClusterUrlAggregates[] }) {
+export function ClusterUrlsTable({
+  data = [] as ClusterUrlAggregates[],
+  clusterName,
+}: {
+  data?: ClusterUrlAggregates[];
+  clusterName?: string;
+}) {
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "amplitude_conversions", desc: true },
   ]);
@@ -282,6 +302,30 @@ export function ClusterUrlsTable({ data = [] as ClusterUrlAggregates[] }) {
   const selectedCount = table.getSelectedRowModel().rows.length;
   const plural = selectedCount > 1 ? "s" : "";
 
+  const exportSelectedToCSV = React.useCallback(() => {
+    const selectedRows = table.getSelectedRowModel().rows as Row<ClusterUrlAggregates>[];
+    if (!selectedRows || selectedRows.length === 0) return;
+    const header = ["Título", "URL"];
+    const records = selectedRows.map((r) => {
+      const title = (r.original.name || r.original.url) as string;
+      const url = r.original.url as string;
+      return [title, url];
+    });
+    const lines = [header, ...records].map((cols) => cols.map(escapeCSV).join(","));
+    const csv = `\uFEFF${lines.join("\r\n")}`; // BOM for Excel compatibility
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const datePart = new Date().toISOString().slice(0, 10);
+    const slug = clusterName ? sanitizeForFilename(clusterName) : "cluster";
+    a.href = url;
+    a.download = `cluster-${slug}-${datePart}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, [table, clusterName]);
+
   return (
     <div className="flex flex-col gap-4 px-4 lg:px-6">
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -289,11 +333,19 @@ export function ClusterUrlsTable({ data = [] as ClusterUrlAggregates[] }) {
         <div className="flex items-center gap-2 ml-auto">
           {selectedCount > 0 ? (
             <Drawer>
-              <DrawerTrigger asChild>
-                <Button type="button" className="bg-black text-white hover:bg-black/90">
-                  Revisar conteúdo
-                </Button>
-              </DrawerTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DrawerTrigger asChild>
+                    <Button type="button" className="bg-black text-white hover:bg-black/90">
+                      <IconPencil className="size-4" />
+                      Revisar conteúdo
+                    </Button>
+                  </DrawerTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  Enviar os textos selecionados para revisão
+                </TooltipContent>
+              </Tooltip>
               <DrawerContent>
                 <div className="mx-auto w-full max-w-xl px-6 py-6">
                   <DrawerHeader className="text-center space-y-2">
@@ -336,6 +388,22 @@ export function ClusterUrlsTable({ data = [] as ClusterUrlAggregates[] }) {
                 </div>
               </DrawerContent>
             </Drawer>
+          ) : null}
+          {selectedCount > 0 ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={exportSelectedToCSV}
+                  className="gap-2"
+                >
+                  <IconDownload className="size-4" />
+                  Exportar CSV
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Exportar itens selecionados em CSV</TooltipContent>
+            </Tooltip>
           ) : null}
           <div className="relative w-full sm:w-64">
             <IconSearch className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
