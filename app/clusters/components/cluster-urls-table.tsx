@@ -258,9 +258,11 @@ const columns: ColumnDef<ClusterUrlAggregates>[] = [
 export function ClusterUrlsTable({
   data = [] as ClusterUrlAggregates[],
   clusterName,
+  selectedWeeks,
 }: {
   data?: ClusterUrlAggregates[];
   clusterName?: string;
+  selectedWeeks?: string[];
 }) {
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "amplitude_conversions", desc: true },
@@ -305,26 +307,37 @@ export function ClusterUrlsTable({
   const exportSelectedToCSV = React.useCallback(() => {
     const selectedRows = table.getSelectedRowModel().rows as Row<ClusterUrlAggregates>[];
     if (!selectedRows || selectedRows.length === 0) return;
-    const header = ["Título", "URL"];
+    const header = ["Título", "URL", "Conversões", "Impressões", "Cliques", "Posição"];
     const records = selectedRows.map((r) => {
-      const title = (r.original.name || r.original.url) as string;
-      const url = r.original.url as string;
-      return [title, url];
+      const o = r.original;
+      const title = (o.name || o.url) as string;
+      const url = o.url as string;
+      const conversions = o.amplitude_conversions ?? 0;
+      const impressions = o.gsc_impressions ?? 0;
+      const clicks = o.gsc_clicks ?? 0;
+      const position = (o.gsc_position ?? 0).toFixed(2);
+      return [title, url, String(conversions), String(impressions), String(clicks), position];
     });
     const lines = [header, ...records].map((cols) => cols.map(escapeCSV).join(","));
     const csv = `\uFEFF${lines.join("\r\n")}`; // BOM for Excel compatibility
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    const datePart = new Date().toISOString().slice(0, 10);
+    // Compute date range from selected weeks if provided
+    const weeksSorted =
+      selectedWeeks && selectedWeeks.length > 0
+        ? [...selectedWeeks].sort((a, b) => a.localeCompare(b))
+        : [];
+    const start = weeksSorted[0];
+    const end = weeksSorted[weeksSorted.length - 1] || start;
     const slug = clusterName ? sanitizeForFilename(clusterName) : "cluster";
     a.href = url;
-    a.download = `cluster-${slug}-${datePart}.csv`;
+    a.download = start && end ? `cluster-${slug}-${start}--${end}.csv` : `cluster-${slug}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-  }, [table, clusterName]);
+  }, [table, clusterName, selectedWeeks]);
 
   return (
     <div className="flex flex-col gap-4 px-4 lg:px-6">

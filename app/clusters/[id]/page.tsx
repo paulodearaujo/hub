@@ -265,7 +265,7 @@ async function ChartAndUrls({
       <div className="px-4 lg:px-6">
         <WeeklyMetricsChart data={weekly} selectedWeeks={selectedWeeks} />
       </div>
-      <ClusterUrlsTable data={urls} clusterName={clusterName} />
+      <ClusterUrlsTable data={urls} clusterName={clusterName} selectedWeeks={selectedWeeks} />
     </>
   );
 }
