@@ -1,5 +1,31 @@
 "use client";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Delta } from "@/components/ui/delta";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { ClusterUrlAggregates } from "@/lib/data/metrics-queries";
 import {
   IconArrowDown,
   IconArrowsUpDown,
@@ -12,6 +38,7 @@ import type {
   Column,
   ColumnDef,
   HeaderGroup,
+  Table as ReactTableType,
   Row,
   SortingState,
 } from "@tanstack/react-table";
@@ -24,22 +51,88 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import * as React from "react";
-import { Button } from "@/components/ui/button";
-import { Delta } from "@/components/ui/delta";
-// removed column toggle UI per request
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import type { ClusterUrlAggregates } from "@/lib/data/metrics-queries";
+
+// Helper: width/alignment classes per column id to avoid duplication
+function getColumnClass(id: string): string {
+  return id === "select"
+    ? "text-left w-[44px] px-4"
+    : id === "amplitude_conversions"
+      ? "text-right w-[15%] px-4"
+      : id === "gsc_impressions"
+        ? "text-right w-[15%] px-4"
+        : id === "gsc_clicks"
+          ? "text-right w-[15%] px-4"
+          : id === "gsc_position"
+            ? "text-right w-[15%] px-4"
+            : id === "name"
+              ? "text-left w-[40%] px-4"
+              : "text-left";
+}
+
+// Helper: sortable header button with arrows
+function SortableHeader({
+  column,
+  label,
+}: {
+  column: Column<ClusterUrlAggregates>;
+  label: string;
+}) {
+  return (
+    <Button
+      variant="ghost"
+      onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      className="h-auto p-0 font-medium w-full justify-end text-right"
+    >
+      <span className="inline-flex items-center gap-1">
+        <span>{label}</span>
+        <span className="inline-flex w-4 justify-center">
+          {column.getIsSorted() === "asc" ? (
+            <IconArrowUp className="size-3" />
+          ) : column.getIsSorted() === "desc" ? (
+            <IconArrowDown className="size-3" />
+          ) : (
+            <IconArrowsUpDown className="size-3 opacity-50" />
+          )}
+        </span>
+      </span>
+    </Button>
+  );
+}
+
+// Helper: render cells for a row consistently (used by virtual and non-virtual paths)
+function renderCells(row: Row<ClusterUrlAggregates>) {
+  return row.getVisibleCells().map((cell: Cell<ClusterUrlAggregates, unknown>) => {
+    const id = cell.column.id as string;
+    const cls = getColumnClass(id);
+    return (
+      <TableCell key={cell.id} className={cls}>
+        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+      </TableCell>
+    );
+  });
+}
 
 const columns: ColumnDef<ClusterUrlAggregates>[] = [
+  {
+    id: "select",
+    header: ({ table }: { table: ReactTableType<ClusterUrlAggregates> }) => (
+      <Checkbox
+        checked={table.getIsAllRowsSelected()}
+        onCheckedChange={(value) => table.toggleAllRowsSelected(!!value)}
+        aria-checked={table.getIsSomeRowsSelected() ? "mixed" : table.getIsAllRowsSelected()}
+        aria-label="Selecionar todas as linhas"
+      />
+    ),
+    cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="Selecionar linha"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
   {
     accessorKey: "name",
     header: "Página",
@@ -82,24 +175,7 @@ const columns: ColumnDef<ClusterUrlAggregates>[] = [
   {
     accessorKey: "amplitude_conversions",
     header: ({ column }: { column: Column<ClusterUrlAggregates> }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="h-auto p-0 font-medium w-full justify-end text-right"
-      >
-        <span className="inline-flex items-center gap-1">
-          <span>Conversões</span>
-          <span className="inline-flex w-4 justify-center">
-            {column.getIsSorted() === "asc" ? (
-              <IconArrowUp className="size-3" />
-            ) : column.getIsSorted() === "desc" ? (
-              <IconArrowDown className="size-3" />
-            ) : (
-              <IconArrowsUpDown className="size-3 opacity-50" />
-            )}
-          </span>
-        </span>
-      </Button>
+      <SortableHeader column={column} label="Conversões" />
     ),
     cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => {
       const pct = row.original.amplitude_conversions_delta_pct ?? 0;
@@ -117,24 +193,7 @@ const columns: ColumnDef<ClusterUrlAggregates>[] = [
   {
     accessorKey: "gsc_impressions",
     header: ({ column }: { column: Column<ClusterUrlAggregates> }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="h-auto p-0 font-medium w-full justify-end text-right"
-      >
-        <span className="inline-flex items-center gap-1">
-          <span>Impressões</span>
-          <span className="inline-flex w-4 justify-center">
-            {column.getIsSorted() === "asc" ? (
-              <IconArrowUp className="size-3" />
-            ) : column.getIsSorted() === "desc" ? (
-              <IconArrowDown className="size-3" />
-            ) : (
-              <IconArrowsUpDown className="size-3 opacity-50" />
-            )}
-          </span>
-        </span>
-      </Button>
+      <SortableHeader column={column} label="Impressões" />
     ),
     cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => {
       const pct = row.original.gsc_impressions_delta_pct ?? 0;
@@ -150,24 +209,7 @@ const columns: ColumnDef<ClusterUrlAggregates>[] = [
   {
     accessorKey: "gsc_clicks",
     header: ({ column }: { column: Column<ClusterUrlAggregates> }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="h-auto p-0 font-medium w-full justify-end text-right"
-      >
-        <span className="inline-flex items-center gap-1">
-          <span>Cliques</span>
-          <span className="inline-flex w-4 justify-center">
-            {column.getIsSorted() === "asc" ? (
-              <IconArrowUp className="size-3" />
-            ) : column.getIsSorted() === "desc" ? (
-              <IconArrowDown className="size-3" />
-            ) : (
-              <IconArrowsUpDown className="size-3 opacity-50" />
-            )}
-          </span>
-        </span>
-      </Button>
+      <SortableHeader column={column} label="Cliques" />
     ),
     cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => {
       const pct = row.original.gsc_clicks_delta_pct ?? 0;
@@ -185,24 +227,7 @@ const columns: ColumnDef<ClusterUrlAggregates>[] = [
   {
     accessorKey: "gsc_position",
     header: ({ column }: { column: Column<ClusterUrlAggregates> }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="h-auto p-0 font-medium w-full justify-end text-right"
-      >
-        <span className="inline-flex items-center gap-1">
-          <span>Posição</span>
-          <span className="inline-flex w-4 justify-center">
-            {column.getIsSorted() === "asc" ? (
-              <IconArrowUp className="size-3" />
-            ) : column.getIsSorted() === "desc" ? (
-              <IconArrowDown className="size-3" />
-            ) : (
-              <IconArrowsUpDown className="size-3 opacity-50" />
-            )}
-          </span>
-        </span>
-      </Button>
+      <SortableHeader column={column} label="Posição" />
     ),
     cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => {
       const delta = row.original.gsc_position_delta ?? 0;
@@ -222,6 +247,7 @@ export function ClusterUrlsTable({ data = [] as ClusterUrlAggregates[] }) {
   ]);
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [inputValue, setInputValue] = React.useState("");
+  const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
   const deferredInput = React.useDeferredValue(inputValue);
   React.useEffect(() => {
     setGlobalFilter(deferredInput);
@@ -231,9 +257,12 @@ export function ClusterUrlsTable({ data = [] as ClusterUrlAggregates[] }) {
   const table = useReactTable({
     data,
     columns,
-    state: { sorting, globalFilter, columnVisibility },
+    state: { sorting, globalFilter, columnVisibility, rowSelection },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
+    onRowSelectionChange: setRowSelection,
+    enableRowSelection: true,
+    getRowId: (row) => row.url,
     // no column toggle controls
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -250,12 +279,64 @@ export function ClusterUrlsTable({ data = [] as ClusterUrlAggregates[] }) {
     estimateSize: () => 44,
     overscan: 8,
   });
+  const selectedCount = table.getSelectedRowModel().rows.length;
+  const plural = selectedCount > 1 ? "s" : "";
 
   return (
     <div className="flex flex-col gap-4 px-4 lg:px-6">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <h2 className="text-lg font-semibold">Páginas do Cluster</h2>
         <div className="flex items-center gap-2 ml-auto">
+          {selectedCount > 0 ? (
+            <Drawer>
+              <DrawerTrigger asChild>
+                <Button type="button" className="bg-black text-white hover:bg-black/90">
+                  Revisar conteúdo
+                </Button>
+              </DrawerTrigger>
+              <DrawerContent>
+                <div className="mx-auto w-full max-w-xl px-6 py-6">
+                  <DrawerHeader className="text-center space-y-2">
+                    <div className="flex items-center justify-center gap-5">
+                      <Avatar className="size-14 ring-2 ring-black/10 shadow-sm">
+                        <AvatarImage src="/everaldo.png" alt="Foto de Everaldo" />
+                        <AvatarFallback>EV</AvatarFallback>
+                      </Avatar>
+                      <div className="text-center min-w-0">
+                        <DrawerTitle asChild>
+                          <h2 className="scroll-m-20 text-3xl font-semibold tracking-tight text-balance">
+                            Enviar para revisão
+                          </h2>
+                        </DrawerTitle>
+                        <DrawerDescription asChild>
+                          <p className="text-muted-foreground text-xl leading-7">
+                            Você vai enviar <span className="font-medium">{selectedCount}</span>{" "}
+                            texto{plural} para o Everaldo revisar.
+                          </p>
+                        </DrawerDescription>
+                      </div>
+                    </div>
+                  </DrawerHeader>
+                  <Separator className="my-4" />
+                  <div className="text-sm text-muted-foreground mb-2 text-center">
+                    Confirme para prosseguir ou cancele para ajustar a seleção.
+                  </div>
+                  <DrawerFooter className="pt-2 grid gap-3 sm:grid-cols-2">
+                    <DrawerClose asChild>
+                      <Button size="lg" className="w-full bg-black text-white hover:bg-black/90">
+                        Confirmar envio
+                      </Button>
+                    </DrawerClose>
+                    <DrawerClose asChild>
+                      <Button size="lg" variant="outline" className="w-full">
+                        Cancelar
+                      </Button>
+                    </DrawerClose>
+                  </DrawerFooter>
+                </div>
+              </DrawerContent>
+            </Drawer>
+          ) : null}
           <div className="relative w-full sm:w-64">
             <IconSearch className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -279,19 +360,7 @@ export function ClusterUrlsTable({ data = [] as ClusterUrlAggregates[] }) {
                 {headerGroup.headers.map(
                   (header: HeaderGroup<ClusterUrlAggregates>["headers"][0]) => {
                     const id = header.column.id as string;
-                    // Larguras fixas: name=40%, conversões/impressões/cliques=15% cada, posição=15%
-                    const cls =
-                      id === "amplitude_conversions"
-                        ? "text-right w-[15%] px-4"
-                        : id === "gsc_impressions"
-                          ? "text-right w-[15%] px-4"
-                          : id === "gsc_clicks"
-                            ? "text-right w-[15%] px-4"
-                            : id === "gsc_position"
-                              ? "text-right w-[15%] px-4"
-                              : id === "name"
-                                ? "text-left w-[40%] px-4"
-                                : "text-left";
+                    const cls = getColumnClass(id);
                     return (
                       <TableHead key={header.id} className={cls}>
                         {header.isPlaceholder
@@ -323,26 +392,7 @@ export function ClusterUrlsTable({ data = [] as ClusterUrlAggregates[] }) {
                     const row = rows[virtualRow.index] as Row<ClusterUrlAggregates>;
                     return (
                       <TableRow key={row.id} data-index={virtualRow.index}>
-                        {row.getVisibleCells().map((cell: Cell<ClusterUrlAggregates, unknown>) => {
-                          const id = cell.column.id as string;
-                          const cls =
-                            id === "amplitude_conversions"
-                              ? "text-right w-[15%] px-4"
-                              : id === "gsc_impressions"
-                                ? "text-right w-[15%] px-4"
-                                : id === "gsc_clicks"
-                                  ? "text-right w-[15%] px-4"
-                                  : id === "gsc_position"
-                                    ? "text-right w-[15%] px-4"
-                                    : id === "name"
-                                      ? "text-left w-[40%] px-4"
-                                      : "text-left";
-                          return (
-                            <TableCell key={cell.id} className={cls}>
-                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </TableCell>
-                          );
-                        })}
+                        {renderCells(row)}
                       </TableRow>
                     );
                   })}
@@ -361,28 +411,7 @@ export function ClusterUrlsTable({ data = [] as ClusterUrlAggregates[] }) {
                 </>
               ) : (
                 rows.map((row: Row<ClusterUrlAggregates>) => (
-                  <TableRow key={row.id}>
-                    {row.getVisibleCells().map((cell: Cell<ClusterUrlAggregates, unknown>) => {
-                      const id = cell.column.id as string;
-                      const cls =
-                        id === "amplitude_conversions"
-                          ? "text-right w-[15%] px-4"
-                          : id === "gsc_impressions"
-                            ? "text-right w-[15%] px-4"
-                            : id === "gsc_clicks"
-                              ? "text-right w-[15%] px-4"
-                              : id === "gsc_position"
-                                ? "text-right w-[15%] px-4"
-                                : id === "name"
-                                  ? "text-left w-[40%] px-4"
-                                  : "text-left";
-                      return (
-                        <TableCell key={cell.id} className={cls}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
+                  <TableRow key={row.id}>{renderCells(row)}</TableRow>
                 ))
               )
             ) : (
