@@ -3,7 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Delta } from "@/components/ui/delta";
+import { calculateCtrPointsChange, calculatePreviousCtr, Delta } from "@/components/ui/delta";
 import {
   Drawer,
   DrawerClose,
@@ -57,11 +57,12 @@ import * as React from "react";
 // Helper: width/alignment classes per column id (simpler & DRY)
 const COLUMN_CLASS: Record<string, string> = {
   select: "text-left w-[44px] px-4",
-  name: "text-left w-[40%] px-4",
-  amplitude_conversions: "text-right w-[15%] px-4",
-  gsc_impressions: "text-right w-[15%] px-4",
-  gsc_clicks: "text-right w-[15%] px-4",
-  gsc_position: "text-right w-[15%] px-4",
+  name: "text-left w-[35%] px-4",
+  amplitude_conversions: "text-right w-[13%] px-4",
+  gsc_impressions: "text-right w-[13%] px-4",
+  gsc_ctr: "text-right w-[13%] px-4",
+  gsc_clicks: "text-right w-[13%] px-4",
+  gsc_position: "text-right w-[13%] px-4",
 };
 function getColumnClass(id: string): string {
   return COLUMN_CLASS[id] ?? "text-left";
@@ -219,6 +220,30 @@ const columns: ColumnDef<ClusterUrlAggregates>[] = [
       );
     },
   },
+  // CTR
+  {
+    accessorKey: "gsc_ctr",
+    header: ({ column }: { column: Column<ClusterUrlAggregates> }) => (
+      <SortableHeader column={column} label="CTR" />
+    ),
+    cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => {
+      const ctr = row.original.gsc_ctr ?? 0;
+      // Use centralized functions for calculations
+      const prevCtr = calculatePreviousCtr(
+        row.original.gsc_impressions,
+        row.original.gsc_clicks,
+        row.original.gsc_impressions_delta_pct,
+        row.original.gsc_clicks_delta_pct,
+      );
+      const ctrDeltaPP = calculateCtrPointsChange(ctr, prevCtr);
+      return (
+        <div className="flex flex-col items-end">
+          <div className="text-right font-medium">{(ctr * 100).toFixed(2)}%</div>
+          <Delta value={ctrDeltaPP} variant="absolute" precision={1} suffix="p.p." />
+        </div>
+      );
+    },
+  },
   // Cliques
   {
     accessorKey: "gsc_clicks",
@@ -307,16 +332,25 @@ export function ClusterUrlsTable({
   const exportSelectedToCSV = React.useCallback(() => {
     const selectedRows = table.getSelectedRowModel().rows as Row<ClusterUrlAggregates>[];
     if (!selectedRows || selectedRows.length === 0) return;
-    const header = ["Título", "URL", "Conversões", "Impressões", "Cliques", "Posição"];
+    const header = ["Título", "URL", "Conversões", "Impressões", "CTR", "Cliques", "Posição"];
     const records = selectedRows.map((r) => {
       const o = r.original;
       const title = (o.name || o.url) as string;
       const url = o.url as string;
       const conversions = o.amplitude_conversions ?? 0;
       const impressions = o.gsc_impressions ?? 0;
+      const ctr = ((o.gsc_ctr ?? 0) * 100).toFixed(2);
       const clicks = o.gsc_clicks ?? 0;
       const position = (o.gsc_position ?? 0).toFixed(2);
-      return [title, url, String(conversions), String(impressions), String(clicks), position];
+      return [
+        title,
+        url,
+        String(conversions),
+        String(impressions),
+        `${ctr}%`,
+        String(clicks),
+        position,
+      ];
     });
     const lines = [header, ...records].map((cols) => cols.map(escapeCSV).join(","));
     const csv = `\uFEFF${lines.join("\r\n")}`; // BOM for Excel compatibility

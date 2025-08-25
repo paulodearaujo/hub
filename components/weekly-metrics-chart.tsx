@@ -24,6 +24,7 @@ type NormalizedMetric = WeeklyMetric & {
   amplitude_conversions_n: number;
   gsc_clicks_n: number;
   gsc_impressions_n: number;
+  gsc_ctr_n: number;
   gsc_position_n: number;
 };
 
@@ -34,16 +35,18 @@ interface WeeklyMetricsChartProps {
 
 const chartConfig = {
   amplitude_conversions: { label: "Conversões", color: "var(--chart-2)" },
-  gsc_clicks: { label: "Cliques", color: "var(--chart-1)" },
   gsc_impressions: { label: "Impressões", color: "var(--chart-3)" },
+  gsc_ctr: { label: "CTR", color: "var(--chart-5)" },
+  gsc_clicks: { label: "Cliques", color: "var(--chart-1)" },
   gsc_position: { label: "Posição Média", color: "var(--chart-4)" },
 } satisfies ChartConfig;
 
 export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetricsChartProps) {
   const [selectedMetrics, setSelectedMetrics] = React.useState<string[]>([
     "amplitude_conversions",
-    "gsc_clicks",
     "gsc_impressions",
+    "gsc_ctr",
+    "gsc_clicks",
     "gsc_position",
   ]);
 
@@ -125,6 +128,7 @@ export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetr
       ),
       gsc_clicks: Math.max(...filteredData.map((d) => Number(d.gsc_clicks || 0))),
       gsc_impressions: Math.max(...filteredData.map((d) => Number(d.gsc_impressions || 0))),
+      gsc_ctr: Math.max(...filteredData.map((d) => Number(d.gsc_ctr || 0))),
       // handled separately for inversion
     };
     const posVals = filteredData.map((d) => Number(d.gsc_position || 0));
@@ -142,6 +146,7 @@ export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetr
       ),
       gsc_clicks_n: clampDiv(Number(d.gsc_clicks || 0), maxValues.gsc_clicks),
       gsc_impressions_n: clampDiv(Number(d.gsc_impressions || 0), maxValues.gsc_impressions),
+      gsc_ctr_n: clampDiv(Number(d.gsc_ctr || 0), maxValues.gsc_ctr),
       // Posição: menor é melhor → invertido e normalizado
       gsc_position_n: ((maxPos - Number(d.gsc_position || 0)) / posDen) * 100,
     }));
@@ -182,16 +187,19 @@ export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetr
               }
             }}
             variant="outline"
-            className="flex flex-wrap gap-0 *:data-[slot=toggle-group-item]:!px-3 *:data-[slot=toggle-group-item]:!h-8"
+            className="flex flex-wrap gap-0 *:data-[slot=toggle-group-item]:!px-5 *:data-[slot=toggle-group-item]:!h-9 *:data-[slot=toggle-group-item]:text-sm *:data-[slot=toggle-group-item]:font-medium"
           >
             <ToggleGroupItem value="amplitude_conversions" aria-label="Conversões">
               Conversões
             </ToggleGroupItem>
-            <ToggleGroupItem value="gsc_clicks" aria-label="Cliques">
-              Cliques
-            </ToggleGroupItem>
             <ToggleGroupItem value="gsc_impressions" aria-label="Impressões">
               Impressões
+            </ToggleGroupItem>
+            <ToggleGroupItem value="gsc_ctr" aria-label="CTR">
+              CTR
+            </ToggleGroupItem>
+            <ToggleGroupItem value="gsc_clicks" aria-label="Cliques">
+              Cliques
             </ToggleGroupItem>
             <ToggleGroupItem value="gsc_position" aria-label="Posição">
               Posição
@@ -248,6 +256,9 @@ export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetr
                     if ((name as string).startsWith("gsc_position")) {
                       const n = Number(original ?? 0);
                       formattedValue = n.toFixed(1);
+                    } else if ((name as string).startsWith("gsc_ctr")) {
+                      const n = Number(original ?? 0);
+                      formattedValue = `${(n * 100).toFixed(2)}%`;
                     } else {
                       const n = Number(original ?? 0);
                       formattedValue = n.toLocaleString("pt-BR");
@@ -284,23 +295,34 @@ export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetr
                 connectNulls={false}
               />
             )}
-            {selectedMetrics.includes("gsc_clicks") && (
-              <Line
-                dataKey="gsc_clicks_n"
-                name="gsc_clicks"
-                type="monotone"
-                stroke="var(--color-gsc_clicks)"
-                strokeWidth={2}
-                dot={false}
-                connectNulls={false}
-              />
-            )}
             {selectedMetrics.includes("gsc_impressions") && (
               <Line
                 dataKey="gsc_impressions_n"
                 name="gsc_impressions"
                 type="monotone"
                 stroke="var(--color-gsc_impressions)"
+                strokeWidth={2}
+                dot={false}
+                connectNulls={false}
+              />
+            )}
+            {selectedMetrics.includes("gsc_ctr") && (
+              <Line
+                dataKey="gsc_ctr_n"
+                name="gsc_ctr"
+                type="monotone"
+                stroke="var(--color-gsc_ctr)"
+                strokeWidth={2}
+                dot={false}
+                connectNulls={false}
+              />
+            )}
+            {selectedMetrics.includes("gsc_clicks") && (
+              <Line
+                dataKey="gsc_clicks_n"
+                name="gsc_clicks"
+                type="monotone"
+                stroke="var(--color-gsc_clicks)"
                 strokeWidth={2}
                 dot={false}
                 connectNulls={false}

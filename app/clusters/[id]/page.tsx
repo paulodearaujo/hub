@@ -8,7 +8,7 @@ import {
   getLatestRunId,
   getRunMetadata,
 } from "@/lib/data/metrics-queries";
-import type { Tables } from "@/lib/database.types";
+import { calculateMetricsWithDeltas } from "@/lib/delta-calculations";
 import type { Metadata, ResolvingMetadata } from "next";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
@@ -38,8 +38,6 @@ interface PageProps {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ weeks?: string }>;
 }
-
-type WeeklyMetric = Partial<Tables<"blog_articles_metrics">>;
 
 export async function generateMetadata(
   { params }: { params: Promise<{ id: string }> },
@@ -160,8 +158,10 @@ async function CardsSection({
 }) {
   const runId = await getLatestRunId();
   if (!runId) return null;
+
   // Base period totals
   const weeklyBase = await getClusterWeeklyMetrics(runId, clusterId, selectedWeeks);
+
   // Build delta period: if only 1 week selected, include the immediately previous available week
   let deltaWeeks: string[] = selectedWeeks;
   if (selectedWeeks.length === 1) {
@@ -174,61 +174,11 @@ async function CardsSection({
     }
   }
   const weeklyForDelta = await getClusterWeeklyMetrics(runId, clusterId, deltaWeeks);
-  const weeksSorted = [...deltaWeeks].sort((a, b) => a.localeCompare(b));
-  const mid = Math.floor(weeksSorted.length / 2);
-  const earlySet = new Set(weeksSorted.slice(0, mid));
-  const totals = weeklyBase.reduce(
-    (acc, w: WeeklyMetric) => {
-      acc.impressions += w.gsc_impressions || 0;
-      acc.clicks += w.gsc_clicks || 0;
-      acc.conversions += w.amplitude_conversions || 0;
-      return acc;
-    },
-    { impressions: 0, clicks: 0, conversions: 0 },
-  );
-  const [sumWeightedPos, sumImpr] = weeklyBase.reduce(
-    (acc, w) => {
-      const impressions = w.gsc_impressions || 0;
-      const pos = w.gsc_position || 0;
-      acc[0] += pos * impressions;
-      acc[1] += impressions;
-      return acc;
-    },
-    [0, 0] as [number, number],
-  );
-  const position = sumImpr > 0 ? sumWeightedPos / sumImpr : 0;
-  // Early bucket for previous period
-  const earlyTotals = weeklyForDelta.reduce(
-    (acc, w: WeeklyMetric) => {
-      const isEarly = w.week_ending && earlySet.has(w.week_ending);
-      if (!isEarly) return acc;
-      const impressions = w.gsc_impressions || 0;
-      acc.impressions += impressions;
-      acc.clicks += w.gsc_clicks || 0;
-      acc.conversions += w.amplitude_conversions || 0;
-      acc._posWeighted += (w.gsc_position || 0) * impressions;
-      return acc;
-    },
-    { impressions: 0, clicks: 0, conversions: 0, _posWeighted: 0 },
-  );
-  const earlyPosition =
-    earlyTotals.impressions > 0 ? earlyTotals._posWeighted / earlyTotals.impressions : 0;
-  return (
-    <SectionCards
-      metrics={{
-        impressions: totals.impressions,
-        clicks: totals.clicks,
-        conversions: totals.conversions,
-        position,
-        previousPeriod: {
-          impressions: earlyTotals.impressions,
-          clicks: earlyTotals.clicks,
-          conversions: earlyTotals.conversions,
-          position: earlyPosition,
-        },
-      }}
-    />
-  );
+
+  // Use centralized function for consistent delta calculation
+  const metricsData = calculateMetricsWithDeltas(weeklyBase, weeklyForDelta);
+
+  return <SectionCards metrics={metricsData} />;
 }
 
 async function ChartAndUrls({

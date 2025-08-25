@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { calculateCtrPointsChange, calculatePreviousCtr, Delta } from "@/components/ui/delta";
 import { IconArrowDown, IconArrowsUpDown, IconArrowUp, IconSearch } from "@tabler/icons-react";
 import type {
   Cell,
@@ -21,8 +23,6 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
-import { Button } from "@/components/ui/button";
-import { Delta } from "@/components/ui/delta";
 // removed column toggle UI per request
 import { Input } from "@/components/ui/input";
 // removed pagination controls per request
@@ -155,7 +155,7 @@ export function ClusterLeaderboardTable({
           <div className="text-center">{row.getValue("cluster_size")}</div>
         ),
       },
-      // Ordem dos cards: Conversões, Impressões, Cliques, Posição
+      // Ordem dos cards: Conversões, Impressões, CTR, Cliques, Posição
       {
         accessorKey: "amplitude_conversions",
         header: ({ column }: { column: Column<ClusterData> }) => (
@@ -184,6 +184,29 @@ export function ClusterLeaderboardTable({
             <div className="flex flex-col items-end">
               <div className="text-right">{impressions.toLocaleString("pt-BR")}</div>
               <Delta value={pct} variant="percent" />
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "gsc_ctr",
+        header: ({ column }: { column: Column<ClusterData> }) => (
+          <SortableHeader column={column} title="CTR" />
+        ),
+        cell: ({ row }: { row: Row<ClusterData> }) => {
+          const ctr = row.getValue("gsc_ctr") as number;
+          // Use centralized functions for calculations
+          const prevCtr = calculatePreviousCtr(
+            row.original.gsc_impressions,
+            row.original.gsc_clicks,
+            row.original.gsc_impressions_delta_pct,
+            row.original.gsc_clicks_delta_pct,
+          );
+          const ctrDeltaPP = calculateCtrPointsChange(ctr, prevCtr);
+          return (
+            <div className="flex flex-col items-end">
+              <div className="text-right font-medium">{(ctr * 100).toFixed(2)}%</div>
+              <Delta value={ctrDeltaPP} variant="absolute" precision={1} suffix="p.p." />
             </div>
           );
         },
@@ -277,21 +300,23 @@ export function ClusterLeaderboardTable({
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header: HeaderGroup<ClusterData>["headers"][0]) => {
                   const id = header.column.id as string;
-                  // Larguras fixas: name=35%, size=10%, conversões/impressões/cliques=15% cada, posição=10%
+                  // Larguras fixas: name=30%, size=8%, conversões/impressões/ctr/cliques=13% cada, posição=10%
                   const cls =
                     id === "cluster_size"
-                      ? "text-center w-[10%] px-4"
+                      ? "text-center w-[8%] px-4"
                       : id === "gsc_position"
                         ? "text-right w-[10%] px-4"
                         : id === "amplitude_conversions"
-                          ? "text-right w-[15%] px-4"
+                          ? "text-right w-[13%] px-4"
                           : id === "gsc_impressions"
-                            ? "text-right w-[15%] px-4"
-                            : id === "gsc_clicks"
-                              ? "text-right w-[15%] px-4"
-                              : id === "cluster_name"
-                                ? "text-left w-[35%] px-4"
-                                : "text-left";
+                            ? "text-right w-[13%] px-4"
+                            : id === "gsc_ctr"
+                              ? "text-right w-[13%] px-4"
+                              : id === "gsc_clicks"
+                                ? "text-right w-[13%] px-4"
+                                : id === "cluster_name"
+                                  ? "text-left w-[30%] px-4"
+                                  : "text-left";
                   return (
                     <TableHead key={header.id} className={cls}>
                       {header.isPlaceholder
@@ -337,18 +362,20 @@ export function ClusterLeaderboardTable({
                           const id = cell.column.id as string;
                           const cls =
                             id === "cluster_size"
-                              ? "text-center w-[10%] px-4"
+                              ? "text-center w-[8%] px-4"
                               : id === "gsc_position"
                                 ? "text-right w-[10%] px-4"
                                 : id === "amplitude_conversions"
-                                  ? "text-right w-[15%] px-4"
+                                  ? "text-right w-[13%] px-4"
                                   : id === "gsc_impressions"
-                                    ? "text-right w-[15%] px-4"
-                                    : id === "gsc_clicks"
-                                      ? "text-right w-[15%] px-4"
-                                      : id === "cluster_name"
-                                        ? "text-left w-[35%] px-4"
-                                        : "text-left";
+                                    ? "text-right w-[13%] px-4"
+                                    : id === "gsc_ctr"
+                                      ? "text-right w-[13%] px-4"
+                                      : id === "gsc_clicks"
+                                        ? "text-right w-[13%] px-4"
+                                        : id === "cluster_name"
+                                          ? "text-left w-[30%] px-4"
+                                          : "text-left";
                           return (
                             <TableCell key={cell.id} className={cls}>
                               {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -388,18 +415,20 @@ export function ClusterLeaderboardTable({
                       const id = cell.column.id as string;
                       const cls =
                         id === "cluster_size"
-                          ? "text-center w-[10%] px-4"
+                          ? "text-center w-[8%] px-4"
                           : id === "gsc_position"
                             ? "text-right w-[10%] px-4"
                             : id === "amplitude_conversions"
-                              ? "text-right w-[15%] px-4"
+                              ? "text-right w-[13%] px-4"
                               : id === "gsc_impressions"
-                                ? "text-right w-[15%] px-4"
-                                : id === "gsc_clicks"
-                                  ? "text-right w-[15%] px-4"
-                                  : id === "cluster_name"
-                                    ? "text-left w-[35%] px-4"
-                                    : "text-left";
+                                ? "text-right w-[13%] px-4"
+                                : id === "gsc_ctr"
+                                  ? "text-right w-[13%] px-4"
+                                  : id === "gsc_clicks"
+                                    ? "text-right w-[13%] px-4"
+                                    : id === "cluster_name"
+                                      ? "text-left w-[30%] px-4"
+                                      : "text-left";
                       return (
                         <TableCell key={cell.id} className={cls}>
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}

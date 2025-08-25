@@ -9,6 +9,7 @@ import {
   getWeeklyMetrics,
 } from "@/lib/data/metrics-queries";
 import type { Tables } from "@/lib/database.types";
+import { calculateMetricsWithDeltas } from "@/lib/delta-calculations";
 import type { Metadata } from "next";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
@@ -156,86 +157,12 @@ async function CardsSection({ selectedWeeks }: { selectedWeeks: string[] }) {
   }
   const weeklyForDelta = await getWeeklyMetrics(deltaWeeks);
 
-  const weeksSorted = [...deltaWeeks].sort((a, b) => a.localeCompare(b));
-  const mid = Math.floor(weeksSorted.length / 2);
-  const earlySet = new Set(weeksSorted.slice(0, mid));
-  const lateSet = new Set(weeksSorted.slice(mid));
-
-  // Calcular totais para early e late (para comparação/delta)
-  const periodTotals = (weeklyForDelta as WeeklyMetric[]).reduce(
-    (acc, w) => {
-      if (!w.week_ending) return acc;
-      const impr = w.gsc_impressions || 0;
-      const pos = w.gsc_position || 0;
-      const clicks = w.gsc_clicks || 0;
-      const conversions = w.amplitude_conversions || 0;
-      const posWeighted = pos * impr;
-
-      if (earlySet.has(w.week_ending)) {
-        acc.early.impressions += impr;
-        acc.early.clicks += clicks;
-        acc.early.conversions += conversions;
-        acc.early._posWeighted += posWeighted;
-      } else if (lateSet.has(w.week_ending)) {
-        acc.late.impressions += impr;
-        acc.late.clicks += clicks;
-        acc.late.conversions += conversions;
-        acc.late._posWeighted += posWeighted;
-      }
-      return acc;
-    },
-    {
-      early: { impressions: 0, clicks: 0, conversions: 0, _posWeighted: 0 },
-      late: { impressions: 0, clicks: 0, conversions: 0, _posWeighted: 0 },
-    },
+  // Use centralized function for consistent delta calculation
+  const metricsData = calculateMetricsWithDeltas(
+    weeklyBase as WeeklyMetric[],
+    weeklyForDelta as WeeklyMetric[],
   );
 
-  const earlyPosition =
-    periodTotals.early.impressions > 0
-      ? periodTotals.early._posWeighted / periodTotals.early.impressions
-      : 0;
-
-  const allTimeImpressions = (weeklyBase as WeeklyMetric[]).reduce(
-    (sum, week) => sum + (week.gsc_impressions || 0),
-    0,
-  );
-  const allTimeClicks = (weeklyBase as WeeklyMetric[]).reduce(
-    (sum, week) => sum + (week.gsc_clicks || 0),
-    0,
-  );
-  const allTimeConversions = (weeklyBase as WeeklyMetric[]).reduce(
-    (sum, week) => sum + (week.amplitude_conversions || 0),
-    0,
-  );
-  const allTimePositionWeighted = (weeklyBase as WeeklyMetric[]).reduce(
-    (acc, w) => acc + (w.gsc_position || 0) * (w.gsc_impressions || 0),
-    0,
-  );
-  const allTimePosition = allTimeImpressions > 0 ? allTimePositionWeighted / allTimeImpressions : 0;
-
-  const averages =
-    (weeklyBase as WeeklyMetric[]).length > 0
-      ? {
-          impressions: allTimeImpressions / weeklyBase.length,
-          clicks: allTimeClicks / weeklyBase.length,
-          position: allTimePosition,
-          conversions: allTimeConversions / weeklyBase.length,
-        }
-      : undefined;
-
-  const metricsData = {
-    impressions: allTimeImpressions,
-    clicks: allTimeClicks,
-    position: allTimePosition,
-    conversions: allTimeConversions,
-    previousPeriod: {
-      impressions: periodTotals.early.impressions,
-      clicks: periodTotals.early.clicks,
-      conversions: periodTotals.early.conversions,
-      position: earlyPosition,
-    },
-    averages: averages || undefined,
-  };
   return <SectionCards metrics={metricsData} />;
 }
 
