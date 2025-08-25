@@ -1,7 +1,5 @@
 "use client";
 
-import * as React from "react";
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import {
   Card,
   CardAction,
@@ -14,6 +12,9 @@ import type { ChartConfig } from "@/components/ui/chart";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { Tables } from "@/lib/database.types";
+import { formatCtr, formatNumber, formatPosition } from "@/lib/formatters";
+import * as React from "react";
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
 // Constantes de configuração
 const DAYS_PER_WEEK = 7;
@@ -255,13 +256,13 @@ export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetr
                       | undefined;
                     if ((name as string).startsWith("gsc_position")) {
                       const n = Number(original ?? 0);
-                      formattedValue = n.toFixed(1);
+                      formattedValue = formatPosition(n);
                     } else if ((name as string).startsWith("gsc_ctr")) {
                       const n = Number(original ?? 0);
-                      formattedValue = `${(n * 100).toFixed(2)}%`;
+                      formattedValue = formatCtr(n);
                     } else {
                       const n = Number(original ?? 0);
-                      formattedValue = n.toLocaleString("pt-BR");
+                      formattedValue = formatNumber(n);
                     }
 
                     // Return JSX with colored dot, label and value

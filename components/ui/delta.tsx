@@ -1,5 +1,6 @@
 "use client";
 
+import { formatPercentageChange } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { IconTrendingDown, IconTrendingUp } from "@tabler/icons-react";
 
@@ -48,10 +49,12 @@ export function Delta({
   if (value === undefined || value === null) return null;
   const num = Number(value);
   const magnitude = Math.abs(num);
-  // hide near-zero noise
-  if (hideIfZero && magnitude < 0.0005) return null;
 
-  const isZero = magnitude < 0.0005;
+  // Check if the rounded value would be zero
+  const roundedMagnitude =
+    Math.round(magnitude * Math.pow(10, precision)) / Math.pow(10, precision);
+  const isZero = roundedMagnitude === 0;
+
   const isPositive = num > 0;
 
   const color = isZero
@@ -68,21 +71,24 @@ export function Delta({
   const roundedValue = Math.round(absValue * Math.pow(10, precision)) / Math.pow(10, precision);
   const isInteger = Number.isInteger(roundedValue);
 
+  // Helper function to format with decimal places and remove trailing zeros
+  const formatDeltaValue = (value: number, decimals: number): string => {
+    const formatted = value.toFixed(decimals);
+    // Remove trailing zeros after decimal point
+    const cleaned = formatted.replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "");
+    return cleaned.replace(".", ","); // Convert to Brazilian standard
+  };
+
+  // Use centralized formatting functions
+  // Always use consistent formatting to avoid hydration mismatches
   const display =
     variant === "percent"
-      ? (() => {
-          const percentValue = absValue * 100;
-          const percentRounded = Math.round(percentValue * 10) / 10; // Arredonda para 1 casa decimal
-          const percentIsInteger = Number.isInteger(percentRounded);
-          return `${percentValue.toLocaleString("pt-BR", {
-            minimumFractionDigits: percentIsInteger ? 0 : 1,
-            maximumFractionDigits: 1,
-          })}%`;
-        })()
-      : absValue.toLocaleString("pt-BR", {
-          minimumFractionDigits: isInteger ? 0 : precision,
-          maximumFractionDigits: precision,
-        });
+      ? isZero
+        ? "0%"
+        : formatPercentageChange(num * 100).replace(/[+-]/, "") // Remove sign, we'll add it separately
+      : isZero
+        ? "0"
+        : formatDeltaValue(absValue, precision); // Convert to Brazilian standard
 
   const Up = <IconTrendingUp className="size-3" />;
   const Down = <IconTrendingDown className="size-3" />;

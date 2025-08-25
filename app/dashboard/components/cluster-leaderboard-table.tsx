@@ -35,6 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { Tables } from "@/lib/database.types";
+import { formatCtr, formatNumber, formatPosition } from "@/lib/formatters";
 
 // Coerência não exibida no momento; thresholds removidos por ora (YAGNI)
 
@@ -166,7 +167,7 @@ export function ClusterLeaderboardTable({
           const pct = row.original.amplitude_conversions_delta_pct ?? 0;
           return (
             <div className="flex flex-col items-end">
-              <div className="text-right font-medium">{conversions.toLocaleString("pt-BR")}</div>
+              <div className="text-right font-medium">{formatNumber(conversions)}</div>
               <Delta value={pct} variant="percent" />
             </div>
           );
@@ -182,7 +183,7 @@ export function ClusterLeaderboardTable({
           const pct = row.original.gsc_impressions_delta_pct ?? 0;
           return (
             <div className="flex flex-col items-end">
-              <div className="text-right">{impressions.toLocaleString("pt-BR")}</div>
+              <div className="text-right">{formatNumber(impressions)}</div>
               <Delta value={pct} variant="percent" />
             </div>
           );
@@ -205,7 +206,7 @@ export function ClusterLeaderboardTable({
           const ctrDeltaPP = calculateCtrPointsChange(ctr, prevCtr);
           return (
             <div className="flex flex-col items-end">
-              <div className="text-right font-medium">{(ctr * 100).toFixed(2)}%</div>
+              <div className="text-right font-medium">{formatCtr(ctr)}</div>
               <Delta value={ctrDeltaPP} variant="absolute" precision={1} suffix="p.p." />
             </div>
           );
@@ -221,7 +222,7 @@ export function ClusterLeaderboardTable({
           const pct = row.original.gsc_clicks_delta_pct ?? 0;
           return (
             <div className="flex flex-col items-end">
-              <div className="text-right font-medium">{clicks.toLocaleString("pt-BR")}</div>
+              <div className="text-right font-medium">{formatNumber(clicks)}</div>
               <Delta value={pct} variant="percent" />
             </div>
           );
@@ -237,7 +238,7 @@ export function ClusterLeaderboardTable({
           const delta = row.original.gsc_position_delta ?? 0;
           return (
             <div className="flex flex-col items-end">
-              <div className="text-right">{Number(pos).toFixed(1)}</div>
+              <div className="text-right">{formatPosition(pos)}</div>
               <Delta value={delta} variant="absolute" precision={1} positiveIcon="down" />
             </div>
           );

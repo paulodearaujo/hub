@@ -1,13 +1,6 @@
 "use client";
 
 import {
-  IconClick,
-  IconEye,
-  IconInnerShadowTop,
-  IconPercentage,
-  IconShoppingCart,
-} from "@tabler/icons-react";
-import {
   Card,
   CardAction,
   CardDescription,
@@ -15,7 +8,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { calculateMetricDeltas, Delta, type MetricsWithDelta } from "@/components/ui/delta";
+import { Delta, calculateMetricDeltas, type MetricsWithDelta } from "@/components/ui/delta";
+import { formatCtr, formatNumber, formatPosition } from "@/lib/formatters";
+import {
+  IconClick,
+  IconEye,
+  IconInnerShadowTop,
+  IconPercentage,
+  IconShoppingCart,
+} from "@tabler/icons-react";
 
 interface SectionCardsProps {
   metrics: MetricsWithDelta;
@@ -24,21 +25,6 @@ interface SectionCardsProps {
 export function SectionCards({ metrics }: SectionCardsProps) {
   // Use centralized delta calculations
   const deltas = calculateMetricDeltas(metrics, metrics.previousPeriod);
-
-  // Helper function to format large numbers
-  const formatNumber = (num: number) => {
-    const MILLION = 1_000_000;
-    const THOUSAND = 1_000;
-
-    if (num >= MILLION) {
-      return `${(num / MILLION).toFixed(1)}M`;
-    } else if (num >= THOUSAND) {
-      return `${(num / THOUSAND).toFixed(1)}K`;
-    }
-    return num.toLocaleString("pt-BR");
-  };
-
-  // (badge removed) Delta cuida do estado visual
 
   return (
     <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs sm:grid-cols-2 lg:px-6 @5xl/main:grid-cols-5">
@@ -90,12 +76,10 @@ export function SectionCards({ metrics }: SectionCardsProps) {
             CTR
           </CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {((metrics.ctr ?? 0) * 100).toFixed(2)}%
+            {formatCtr(metrics.ctr)}
           </CardTitle>
           <CardAction>
-            {Math.abs(deltas.ctrChange) > 0.005 ? (
-              <Delta value={deltas.ctrChange} variant="absolute" precision={2} suffix="p.p." />
-            ) : null}
+            <Delta value={deltas.ctrChange} variant="absolute" precision={2} suffix="p.p." />
           </CardAction>
         </CardHeader>
       </Card>
@@ -128,7 +112,7 @@ export function SectionCards({ metrics }: SectionCardsProps) {
             Posição Média
           </CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {(metrics.position ?? 0).toFixed(1)}
+            {formatPosition(metrics.position)}
           </CardTitle>
           <CardAction>
             <Delta

@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ClusterUrlAggregates } from "@/lib/data/metrics-queries";
+import { formatCtr, formatNumber, formatPosition } from "@/lib/formatters";
 import {
   IconArrowDown,
   IconArrowsUpDown,
@@ -197,7 +198,7 @@ const columns: ColumnDef<ClusterUrlAggregates>[] = [
       return (
         <div className="flex flex-col items-end">
           <div className="text-right font-medium">
-            {row.original.amplitude_conversions.toLocaleString("pt-BR")}
+            {formatNumber(row.original.amplitude_conversions)}
           </div>
           <Delta value={pct} variant="percent" />
         </div>
@@ -214,7 +215,7 @@ const columns: ColumnDef<ClusterUrlAggregates>[] = [
       const pct = row.original.gsc_impressions_delta_pct ?? 0;
       return (
         <div className="flex flex-col items-end">
-          <div className="text-right">{row.original.gsc_impressions.toLocaleString("pt-BR")}</div>
+          <div className="text-right">{formatNumber(row.original.gsc_impressions)}</div>
           <Delta value={pct} variant="percent" />
         </div>
       );
@@ -238,7 +239,7 @@ const columns: ColumnDef<ClusterUrlAggregates>[] = [
       const ctrDeltaPP = calculateCtrPointsChange(ctr, prevCtr);
       return (
         <div className="flex flex-col items-end">
-          <div className="text-right font-medium">{(ctr * 100).toFixed(2)}%</div>
+          <div className="text-right font-medium">{formatCtr(ctr)}</div>
           <Delta value={ctrDeltaPP} variant="absolute" precision={1} suffix="p.p." />
         </div>
       );
@@ -254,9 +255,7 @@ const columns: ColumnDef<ClusterUrlAggregates>[] = [
       const pct = row.original.gsc_clicks_delta_pct ?? 0;
       return (
         <div className="flex flex-col items-end">
-          <div className="text-right font-medium">
-            {row.original.gsc_clicks.toLocaleString("pt-BR")}
-          </div>
+          <div className="text-right font-medium">{formatNumber(row.original.gsc_clicks)}</div>
           <Delta value={pct} variant="percent" />
         </div>
       );
@@ -272,7 +271,7 @@ const columns: ColumnDef<ClusterUrlAggregates>[] = [
       const delta = row.original.gsc_position_delta ?? 0;
       return (
         <div className="flex flex-col items-end">
-          <div className="text-right">{row.original.gsc_position.toFixed(1)}</div>
+          <div className="text-right">{formatPosition(row.original.gsc_position)}</div>
           <Delta value={delta} variant="absolute" precision={1} positiveIcon="down" />
         </div>
       );
@@ -339,9 +338,9 @@ export function ClusterUrlsTable({
       const url = o.url as string;
       const conversions = o.amplitude_conversions ?? 0;
       const impressions = o.gsc_impressions ?? 0;
-      const ctr = ((o.gsc_ctr ?? 0) * 100).toFixed(2);
+      const ctr = formatCtr(o.gsc_ctr);
       const clicks = o.gsc_clicks ?? 0;
-      const position = (o.gsc_position ?? 0).toFixed(2);
+      const position = formatPosition(o.gsc_position);
       return [
         title,
         url,
