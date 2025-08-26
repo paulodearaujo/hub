@@ -26,14 +26,7 @@ import * as React from "react";
 // removed column toggle UI per request
 import { Input } from "@/components/ui/input";
 // removed pagination controls per request
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import type { Tables } from "@/lib/database.types";
 import { formatCtr, formatNumber, formatPosition } from "@/lib/formatters";
 
@@ -291,163 +284,165 @@ export function ClusterLeaderboardTable({
         </div>
       </div>
 
-      <div
-        ref={useVirtual ? containerRef : undefined}
-        className={`rounded-lg border ${useVirtual ? "max-h-[640px] overflow-auto" : "overflow-hidden"}`}
-      >
-        <Table className="table-fixed w-full">
-          <TableHeader className="bg-muted sticky top-0 z-10">
-            {table.getHeaderGroups().map((headerGroup: HeaderGroup<ClusterData>) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header: HeaderGroup<ClusterData>["headers"][0]) => {
-                  const id = header.column.id as string;
-                  // Larguras fixas: name=30%, size=8%, conversões/impressões/ctr/cliques=13% cada, posição=10%
-                  const cls =
-                    id === "cluster_size"
-                      ? "text-center w-[8%] px-4"
-                      : id === "gsc_position"
-                        ? "text-right w-[10%] px-4"
-                        : id === "amplitude_conversions"
-                          ? "text-right w-[13%] px-4"
-                          : id === "gsc_impressions"
+      <div className="rounded-lg border">
+        <div
+          ref={useVirtual ? containerRef : undefined}
+          className="max-h-[640px] overflow-auto relative"
+        >
+          <table className="w-full table-fixed caption-bottom text-sm">
+            <thead className="[&_tr]:border-b bg-muted border-b shadow-sm sticky top-0 z-10">
+              {table.getHeaderGroups().map((headerGroup: HeaderGroup<ClusterData>) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header: HeaderGroup<ClusterData>["headers"][0]) => {
+                    const id = header.column.id as string;
+                    // Larguras fixas: name=30%, size=8%, conversões/impressões/ctr/cliques=13% cada, posição=10%
+                    const cls =
+                      id === "cluster_size"
+                        ? "text-center w-[8%] px-4"
+                        : id === "gsc_position"
+                          ? "text-right w-[10%] px-4"
+                          : id === "amplitude_conversions"
                             ? "text-right w-[13%] px-4"
-                            : id === "gsc_ctr"
+                            : id === "gsc_impressions"
                               ? "text-right w-[13%] px-4"
-                              : id === "gsc_clicks"
+                              : id === "gsc_ctr"
                                 ? "text-right w-[13%] px-4"
-                                : id === "cluster_name"
-                                  ? "text-left w-[30%] px-4"
-                                  : "text-left";
-                  return (
-                    <TableHead key={header.id} className={cls}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {rows.length ? (
-              useVirtual ? (
-                // Virtualização: padding superior, linhas visíveis, padding inferior
-                <>
-                  {/* Padding top */}
-                  {(() => {
-                    const firstItem = rowVirtualizer.getVirtualItems()[0];
-                    return firstItem && firstItem.start > 0 ? (
-                      <tr>
-                        <td colSpan={columns.length} style={{ height: firstItem.start }} />
-                      </tr>
-                    ) : null;
-                  })()}
-                  {/* Linhas visíveis */}
-                  {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                    const row = rows[virtualRow.index] as Row<ClusterData>;
-                    return (
-                      <TableRow
-                        key={row.id}
-                        data-index={virtualRow.index}
-                        data-state={row.getIsSelected() && "selected"}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={(e: React.MouseEvent<HTMLTableRowElement>) => {
-                          // Não navegar se clicar em um link
-                          if ((e.target as HTMLElement).closest("a")) return;
-                          const url = `/clusters/${row.original.cluster_id}${weeksParam}`;
-                          router.push(url);
-                        }}
-                      >
-                        {row.getVisibleCells().map((cell: Cell<ClusterData, unknown>) => {
-                          const id = cell.column.id as string;
-                          const cls =
-                            id === "cluster_size"
-                              ? "text-center w-[8%] px-4"
-                              : id === "gsc_position"
-                                ? "text-right w-[10%] px-4"
-                                : id === "amplitude_conversions"
+                                : id === "gsc_clicks"
                                   ? "text-right w-[13%] px-4"
-                                  : id === "gsc_impressions"
-                                    ? "text-right w-[13%] px-4"
-                                    : id === "gsc_ctr"
-                                      ? "text-right w-[13%] px-4"
-                                      : id === "gsc_clicks"
-                                        ? "text-right w-[13%] px-4"
-                                        : id === "cluster_name"
-                                          ? "text-left w-[30%] px-4"
-                                          : "text-left";
-                          return (
-                            <TableCell key={cell.id} className={cls}>
-                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </TableCell>
-                          );
-                        })}
-                      </TableRow>
+                                  : id === "cluster_name"
+                                    ? "text-left w-[30%] px-4"
+                                    : "text-left";
+                    return (
+                      <TableHead key={header.id} className={cls}>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(header.column.columnDef.header, header.getContext())}
+                      </TableHead>
                     );
                   })}
-                  {/* Padding bottom */}
-                  {(() => {
-                    const lastItem = rowVirtualizer.getVirtualItems().at(-1);
-                    const remainingHeight = lastItem
-                      ? rowVirtualizer.getTotalSize() - lastItem.end
-                      : 0;
-                    return remainingHeight > 0 ? (
-                      <tr>
-                        <td colSpan={columns.length} style={{ height: remainingHeight }} />
-                      </tr>
-                    ) : null;
-                  })()}
-                </>
-              ) : (
-                rows.map((row: Row<ClusterData>) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={(e: React.MouseEvent<HTMLTableRowElement>) => {
-                      // Não navegar se clicar em um link
-                      if ((e.target as HTMLElement).closest("a")) return;
-                      const url = `/clusters/${row.original.cluster_id}${weeksParam}`;
-                      router.push(url);
-                    }}
-                  >
-                    {row.getVisibleCells().map((cell: Cell<ClusterData, unknown>) => {
-                      const id = cell.column.id as string;
-                      const cls =
-                        id === "cluster_size"
-                          ? "text-center w-[8%] px-4"
-                          : id === "gsc_position"
-                            ? "text-right w-[10%] px-4"
-                            : id === "amplitude_conversions"
-                              ? "text-right w-[13%] px-4"
-                              : id === "gsc_impressions"
-                                ? "text-right w-[13%] px-4"
-                                : id === "gsc_ctr"
-                                  ? "text-right w-[13%] px-4"
-                                  : id === "gsc_clicks"
-                                    ? "text-right w-[13%] px-4"
-                                    : id === "cluster_name"
-                                      ? "text-left w-[30%] px-4"
-                                      : "text-left";
+                </TableRow>
+              ))}
+            </thead>
+            <TableBody>
+              {rows.length ? (
+                useVirtual ? (
+                  // Virtualização: padding superior, linhas visíveis, padding inferior
+                  <>
+                    {/* Padding top */}
+                    {(() => {
+                      const firstItem = rowVirtualizer.getVirtualItems()[0];
+                      return firstItem && firstItem.start > 0 ? (
+                        <tr>
+                          <td colSpan={columns.length} style={{ height: firstItem.start }} />
+                        </tr>
+                      ) : null;
+                    })()}
+                    {/* Linhas visíveis */}
+                    {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                      const row = rows[virtualRow.index] as Row<ClusterData>;
                       return (
-                        <TableCell key={cell.id} className={cls}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </TableCell>
+                        <TableRow
+                          key={row.id}
+                          data-index={virtualRow.index}
+                          data-state={row.getIsSelected() && "selected"}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={(e: React.MouseEvent<HTMLTableRowElement>) => {
+                            // Não navegar se clicar em um link
+                            if ((e.target as HTMLElement).closest("a")) return;
+                            const url = `/clusters/${row.original.cluster_id}${weeksParam}`;
+                            router.push(url);
+                          }}
+                        >
+                          {row.getVisibleCells().map((cell: Cell<ClusterData, unknown>) => {
+                            const id = cell.column.id as string;
+                            const cls =
+                              id === "cluster_size"
+                                ? "text-center w-[8%] px-4"
+                                : id === "gsc_position"
+                                  ? "text-right w-[10%] px-4"
+                                  : id === "amplitude_conversions"
+                                    ? "text-right w-[13%] px-4"
+                                    : id === "gsc_impressions"
+                                      ? "text-right w-[13%] px-4"
+                                      : id === "gsc_ctr"
+                                        ? "text-right w-[13%] px-4"
+                                        : id === "gsc_clicks"
+                                          ? "text-right w-[13%] px-4"
+                                          : id === "cluster_name"
+                                            ? "text-left w-[30%] px-4"
+                                            : "text-left";
+                            return (
+                              <TableCell key={cell.id} className={cls}>
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
                       );
                     })}
-                  </TableRow>
-                ))
-              )
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  Nenhum cluster encontrado.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                    {/* Padding bottom */}
+                    {(() => {
+                      const lastItem = rowVirtualizer.getVirtualItems().at(-1);
+                      const remainingHeight = lastItem
+                        ? rowVirtualizer.getTotalSize() - lastItem.end
+                        : 0;
+                      return remainingHeight > 0 ? (
+                        <tr>
+                          <td colSpan={columns.length} style={{ height: remainingHeight }} />
+                        </tr>
+                      ) : null;
+                    })()}
+                  </>
+                ) : (
+                  rows.map((row: Row<ClusterData>) => (
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && "selected"}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={(e: React.MouseEvent<HTMLTableRowElement>) => {
+                        // Não navegar se clicar em um link
+                        if ((e.target as HTMLElement).closest("a")) return;
+                        const url = `/clusters/${row.original.cluster_id}${weeksParam}`;
+                        router.push(url);
+                      }}
+                    >
+                      {row.getVisibleCells().map((cell: Cell<ClusterData, unknown>) => {
+                        const id = cell.column.id as string;
+                        const cls =
+                          id === "cluster_size"
+                            ? "text-center w-[8%] px-4"
+                            : id === "gsc_position"
+                              ? "text-right w-[10%] px-4"
+                              : id === "amplitude_conversions"
+                                ? "text-right w-[13%] px-4"
+                                : id === "gsc_impressions"
+                                  ? "text-right w-[13%] px-4"
+                                  : id === "gsc_ctr"
+                                    ? "text-right w-[13%] px-4"
+                                    : id === "gsc_clicks"
+                                      ? "text-right w-[13%] px-4"
+                                      : id === "cluster_name"
+                                        ? "text-left w-[30%] px-4"
+                                        : "text-left";
+                        return (
+                          <TableCell key={cell.id} className={cls}>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  ))
+                )
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    Nenhum cluster encontrado.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </table>
+        </div>
       </div>
 
       <div className="flex items-center justify-between gap-2">

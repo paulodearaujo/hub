@@ -16,14 +16,7 @@ import {
 } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ClusterUrlAggregates } from "@/lib/data/metrics-queries";
 import { formatCtr, formatNumber, formatPosition } from "@/lib/formatters";
@@ -463,80 +456,82 @@ export function ClusterUrlsTable({
         </div>
       </div>
 
-      <div
-        ref={useVirtual ? containerRef : undefined}
-        className={`rounded-lg border ${useVirtual ? "max-h-[640px] overflow-auto" : "overflow-hidden"}`}
-      >
-        <Table className="table-fixed w-full">
-          <TableHeader className="bg-muted sticky top-0 z-10">
-            {table.getHeaderGroups().map((headerGroup: HeaderGroup<ClusterUrlAggregates>) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map(
-                  (header: HeaderGroup<ClusterUrlAggregates>["headers"][0]) => {
-                    const id = header.column.id as string;
-                    const cls = getColumnClass(id);
-                    return (
-                      <TableHead key={header.id} className={cls}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(header.column.columnDef.header, header.getContext())}
-                      </TableHead>
-                    );
-                  },
-                )}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {rows.length ? (
-              useVirtual ? (
-                // Virtualização: padding superior, linhas visíveis, padding inferior
-                <>
-                  {/* Padding top */}
-                  {(() => {
-                    const firstItem = rowVirtualizer.getVirtualItems()[0];
-                    return firstItem && firstItem.start > 0 ? (
-                      <tr>
-                        <td colSpan={columns.length} style={{ height: firstItem.start }} />
-                      </tr>
-                    ) : null;
-                  })()}
-                  {/* Linhas visíveis */}
-                  {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                    const row = rows[virtualRow.index] as Row<ClusterUrlAggregates>;
-                    return (
-                      <TableRow key={row.id} data-index={virtualRow.index}>
-                        {renderCells(row)}
-                      </TableRow>
-                    );
-                  })}
-                  {/* Padding bottom */}
-                  {(() => {
-                    const lastItem = rowVirtualizer.getVirtualItems().at(-1);
-                    const remainingHeight = lastItem
-                      ? rowVirtualizer.getTotalSize() - lastItem.end
-                      : 0;
-                    return remainingHeight > 0 ? (
-                      <tr>
-                        <td colSpan={columns.length} style={{ height: remainingHeight }} />
-                      </tr>
-                    ) : null;
-                  })()}
-                </>
+      <div className="rounded-lg border">
+        <div
+          ref={useVirtual ? containerRef : undefined}
+          className="max-h-[640px] overflow-auto relative"
+        >
+          <table className="w-full table-fixed caption-bottom text-sm">
+            <thead className="[&_tr]:border-b bg-muted border-b shadow-sm sticky top-0 z-10">
+              {table.getHeaderGroups().map((headerGroup: HeaderGroup<ClusterUrlAggregates>) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map(
+                    (header: HeaderGroup<ClusterUrlAggregates>["headers"][0]) => {
+                      const id = header.column.id as string;
+                      const cls = getColumnClass(id);
+                      return (
+                        <TableHead key={header.id} className={cls}>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(header.column.columnDef.header, header.getContext())}
+                        </TableHead>
+                      );
+                    },
+                  )}
+                </TableRow>
+              ))}
+            </thead>
+            <TableBody>
+              {rows.length ? (
+                useVirtual ? (
+                  // Virtualização: padding superior, linhas visíveis, padding inferior
+                  <>
+                    {/* Padding top */}
+                    {(() => {
+                      const firstItem = rowVirtualizer.getVirtualItems()[0];
+                      return firstItem && firstItem.start > 0 ? (
+                        <tr>
+                          <td colSpan={columns.length} style={{ height: firstItem.start }} />
+                        </tr>
+                      ) : null;
+                    })()}
+                    {/* Linhas visíveis */}
+                    {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                      const row = rows[virtualRow.index] as Row<ClusterUrlAggregates>;
+                      return (
+                        <TableRow key={row.id} data-index={virtualRow.index}>
+                          {renderCells(row)}
+                        </TableRow>
+                      );
+                    })}
+                    {/* Padding bottom */}
+                    {(() => {
+                      const lastItem = rowVirtualizer.getVirtualItems().at(-1);
+                      const remainingHeight = lastItem
+                        ? rowVirtualizer.getTotalSize() - lastItem.end
+                        : 0;
+                      return remainingHeight > 0 ? (
+                        <tr>
+                          <td colSpan={columns.length} style={{ height: remainingHeight }} />
+                        </tr>
+                      ) : null;
+                    })()}
+                  </>
+                ) : (
+                  rows.map((row: Row<ClusterUrlAggregates>) => (
+                    <TableRow key={row.id}>{renderCells(row)}</TableRow>
+                  ))
+                )
               ) : (
-                rows.map((row: Row<ClusterUrlAggregates>) => (
-                  <TableRow key={row.id}>{renderCells(row)}</TableRow>
-                ))
-              )
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  Nenhuma página encontrada.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    Nenhuma página encontrada.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </table>
+        </div>
       </div>
     </div>
   );

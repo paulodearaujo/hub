@@ -63,7 +63,19 @@ export function calculateCtrPointsChange(
   current?: number,
   previous?: number,
 ): number {
-  return ((current ?? 0) - (previous ?? 0)) * 100;
+  const cur = current ?? 0;
+  const prev = previous ?? 0;
+
+  // Normalize both to percentage (0-100 range)
+  // If current > 1, it's already in percentage from DB
+  // If current <= 1, it's decimal and needs * 100
+  const curPercent = cur > 1 ? cur : cur * 100;
+  const prevPercent = prev > 1 ? prev : prev * 100;
+
+  const delta = curPercent - prevPercent;
+
+  // Return delta as-is, even if Infinity/NaN for debugging
+  return delta;
 }
 
 /**
@@ -74,6 +86,11 @@ export function calculatePreviousFromDeltaPct(
   current: number,
   deltaPct: number,
 ): number {
+  // Handle edge cases: -100% would divide by zero
+  if (deltaPct <= -1) {
+    return 0;
+  }
+  // Let Infinity/NaN propagate for debugging visibility
   return current / (1 + deltaPct);
 }
 

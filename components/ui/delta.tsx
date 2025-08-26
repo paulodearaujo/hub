@@ -48,6 +48,17 @@ export function Delta({
 }: DeltaProps) {
   if (value === undefined || value === null) return null;
   const num = Number(value);
+
+  // Handle Infinity and NaN cases - show for debugging
+  if (!Number.isFinite(num)) {
+    return (
+      <span className={cn("text-xs text-orange-600 dark:text-orange-400", className)}>
+        {Number.isNaN(num) ? "NaN" : num > 0 ? "+∞" : "-∞"}
+        {suffix && <span className="ml-0.5">{suffix}</span>}
+      </span>
+    );
+  }
+
   const magnitude = Math.abs(num);
 
   // Check if the rounded value would be zero

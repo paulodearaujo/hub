@@ -18,7 +18,10 @@ const isValid = (value: number | null | undefined): value is number => {
 const formatDecimal = (value: number, decimals: number): string => {
   const formatted = value.toFixed(decimals);
   // Remove trailing zeros after decimal point
-  const cleaned = formatted.replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "");
+  const cleaned = formatted.replace(/(\.\d*?[1-9])0+$/, "$1").replace(
+    /\.0+$/,
+    "",
+  );
   return toBrazilian(cleaned);
 };
 
@@ -60,14 +63,17 @@ export function formatCompactNumber(value: number | null | undefined): string {
 /**
  * Format CTR as percentage with 2 decimal places
  * Uses Brazilian standard: comma as decimal separator
- * @example formatCtr(0.04523) => "4,52%"
+ * ATENÇÃO: CTR do banco já vem em percentual (6.20 = 6.20%), não decimal!
+ * @example formatCtr(0.04523) => "4,52%" (cálculos) ou formatCtr(6.20) => "6,20%" (do banco)
  */
 export function formatCtr(value: number | null | undefined): string {
   if (!isValid(value)) return "0%";
-  
-  const percentage = value * 100;
+
+  // Se o valor for maior que 1, assume que já está em percentual (vindo do banco)
+  // Senão, assume que é decimal (0-1) e precisa multiplicar por 100
+  const percentage = value > 1 ? value : value * 100;
   if (percentage === 0) return "0%";
-  
+
   return `${formatDecimal(percentage, 2)}%`;
 }
 

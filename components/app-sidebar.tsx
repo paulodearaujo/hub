@@ -32,7 +32,7 @@ const data = {
   user: {
     name: "Paulinho Gatinho",
     email: "boss@world.com",
-    avatar: "/avatars/shadcn.jpg",
+    avatar: "",
   },
   navMain: [
     {
