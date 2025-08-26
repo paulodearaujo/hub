@@ -14,14 +14,14 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 interface SiteHeaderProps {
   availableWeeks?: string[];
   currentWeeks?: string[];
-  basePath?: string; // default "/dashboard"
+  basePath?: string; // default "/"
   onNavigationStateChange?: (isPending: boolean) => void;
 }
 
 export function SiteHeader({
   availableWeeks = [],
   currentWeeks = [],
-  basePath = "/dashboard",
+  basePath = "/",
   onNavigationStateChange,
 }: SiteHeaderProps) {
   const router = useRouter();

@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 export function ClusterHeader({
   name,
   meta,
-  backHref = "/dashboard",
+  backHref = "/",
 }: {
   name: string;
   meta: {

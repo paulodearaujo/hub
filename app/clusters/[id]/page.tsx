@@ -1,5 +1,5 @@
 import { AppSidebar } from "@/components/app-sidebar";
-import { SectionCards } from "@/components/section-cards";
+import { SectionCards } from "@/app/components/section-cards";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import {
   getAvailableWeeks,
