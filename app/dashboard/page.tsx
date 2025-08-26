@@ -12,7 +12,6 @@ import type { Tables } from "@/lib/database.types";
 import { calculateMetricsWithDeltas } from "@/lib/delta-calculations";
 import type { Metadata } from "next";
 import dynamic from "next/dynamic";
-import { Suspense } from "react";
 import { DashboardWrapper } from "./dashboard-wrapper";
 
 export const metadata: Metadata = {
@@ -21,24 +20,14 @@ export const metadata: Metadata = {
   alternates: { canonical: "/dashboard" },
 };
 
-const CARD_SKELETON_KEYS = ["sk1", "sk2", "sk3", "sk4"] as const;
-
 const WeeklyMetricsChart = dynamic(() =>
   import("@/components/weekly-metrics-chart.client").then((m) => ({ default: m.default })),
 );
 
-const ClusterLeaderboardTable = dynamic(
-  () =>
-    import("./components/cluster-leaderboard-table").then((m) => ({
-      default: m.ClusterLeaderboardTable,
-    })),
-  {
-    loading: () => (
-      <div className="px-4 lg:px-6">
-        <div className="h-64 w-full rounded-lg border animate-pulse" />
-      </div>
-    ),
-  },
+const ClusterLeaderboardTable = dynamic(() =>
+  import("./components/cluster-leaderboard-table").then((m) => ({
+    default: m.ClusterLeaderboardTable,
+  })),
 );
 
 interface PageProps {
@@ -101,38 +90,15 @@ export default async function Page({ searchParams }: PageProps) {
         <DashboardWrapper availableWeeks={availableWeeks as string[]} currentWeeks={selectedWeeks}>
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <Suspense
-                fallback={
-                  <div className="px-4 lg:px-6">
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                      {CARD_SKELETON_KEYS.map((key) => (
-                        <div key={key} className="rounded-lg border p-4">
-                          <div className="h-4 w-24 mb-2 bg-muted animate-pulse rounded" />
-                          <div className="h-8 w-32 bg-muted animate-pulse rounded" />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                }
-              >
-                {/* Cards stream separately */}
-                <CardsSection selectedWeeks={selectedWeeks} />
-              </Suspense>
+              {/* Cards - responsabilidade: métricas agregadas */}
+              <CardsSection selectedWeeks={selectedWeeks} />
 
-              <Suspense
-                fallback={
-                  <div className="px-4 lg:px-6 space-y-4">
-                    <div className="h-[250px] w-full rounded-lg bg-muted animate-pulse" />
-                    <div className="h-64 w-full rounded-lg border animate-pulse" />
-                  </div>
-                }
-              >
-                <ChartAndTable
-                  runId={runId}
-                  selectedWeeks={selectedWeeks}
-                  clusterCreatedAt={formattedClusterDate}
-                />
-              </Suspense>
+              {/* Gráfico e Tabela - responsabilidade: visualizações detalhadas */}
+              <ChartAndTable
+                runId={runId}
+                selectedWeeks={selectedWeeks}
+                clusterCreatedAt={formattedClusterDate}
+              />
             </div>
           </div>
         </DashboardWrapper>

@@ -1,4 +1,5 @@
 import { AppSidebar } from "@/components/app-sidebar";
+import { SectionCards } from "@/components/section-cards";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import {
   getAvailableWeeks,
@@ -11,11 +12,6 @@ import {
 import { calculateMetricsWithDeltas } from "@/lib/delta-calculations";
 import type { Metadata, ResolvingMetadata } from "next";
 import dynamic from "next/dynamic";
-import { Suspense } from "react";
-
-const CARD_SKELETON_KEYS = ["sk1", "sk2", "sk3", "sk4"] as const;
-
-import { SectionCards } from "@/components/section-cards";
 import { ClusterHeader } from "../components/cluster-header";
 import { ClusterWrapper } from "./cluster-wrapper";
 
@@ -23,15 +19,8 @@ const WeeklyMetricsChart = dynamic(() =>
   import("@/components/weekly-metrics-chart.client").then((m) => ({ default: m.default })),
 );
 
-const ClusterUrlsTable = dynamic(
-  () => import("../components/cluster-urls-table").then((m) => ({ default: m.ClusterUrlsTable })),
-  {
-    loading: () => (
-      <div className="px-4 lg:px-6">
-        <div className="h-64 w-full rounded-lg border animate-pulse" />
-      </div>
-    ),
-  },
+const ClusterUrlsTable = dynamic(() =>
+  import("../components/cluster-urls-table").then((m) => ({ default: m.ClusterUrlsTable })),
 );
 
 interface PageProps {
@@ -112,35 +101,12 @@ export default async function Page({ params, searchParams }: PageProps) {
                 }}
                 backHref={`/dashboard${selectedWeeks.length ? `?weeks=${selectedWeeks.join(",")}` : ""}`}
               />
-              <Suspense
-                fallback={
-                  <div className="px-4 lg:px-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {CARD_SKELETON_KEYS.map((key) => (
-                      <div key={key} className="rounded-lg border p-4">
-                        <div className="h-4 w-24 mb-2 bg-muted animate-pulse rounded" />
-                        <div className="h-8 w-32 bg-muted animate-pulse rounded" />
-                      </div>
-                    ))}
-                  </div>
-                }
-              >
-                <CardsSection clusterId={clusterId} selectedWeeks={selectedWeeks} />
-              </Suspense>
-
-              <Suspense
-                fallback={
-                  <div className="px-4 lg:px-6 space-y-4">
-                    <div className="h-[250px] w-full rounded-lg bg-muted animate-pulse" />
-                    <div className="h-64 w-full rounded-lg border animate-pulse" />
-                  </div>
-                }
-              >
-                <ChartAndUrls
-                  clusterId={clusterId}
-                  selectedWeeks={selectedWeeks}
-                  clusterName={info?.cluster_name || `Cluster ${id}`}
-                />
-              </Suspense>
+              <CardsSection clusterId={clusterId} selectedWeeks={selectedWeeks} />
+              <ChartAndUrls
+                clusterId={clusterId}
+                selectedWeeks={selectedWeeks}
+                clusterName={info?.cluster_name || `Cluster ${id}`}
+              />
             </div>
           </div>
         </ClusterWrapper>

@@ -388,19 +388,17 @@ export function ClusterUrlsTable({
               <DrawerContent>
                 <div className="mx-auto w-full max-w-xl px-6 py-6">
                   <DrawerHeader className="text-center space-y-2">
-                    <div className="flex items-center justify-center gap-5">
-                      <Avatar className="size-14 ring-2 ring-black/10 shadow-sm">
+                    <div className="flex items-center justify-center gap-4">
+                      <Avatar className="size-12 ring-2 ring-black/10 shadow-sm">
                         <AvatarImage src="/everaldo.png" alt="Foto de Everaldo" />
                         <AvatarFallback>EV</AvatarFallback>
                       </Avatar>
                       <div className="text-center min-w-0">
                         <DrawerTitle asChild>
-                          <h2 className="scroll-m-20 text-3xl font-semibold tracking-tight text-balance">
-                            Enviar para revisão
-                          </h2>
+                          <h2 className="text-2xl font-semibold">Enviar para revisão</h2>
                         </DrawerTitle>
                         <DrawerDescription asChild>
-                          <p className="text-muted-foreground text-xl leading-7">
+                          <p className="text-base text-muted-foreground whitespace-nowrap">
                             Você vai enviar <span className="font-medium">{selectedCount}</span>{" "}
                             texto{plural} para o Everaldo revisar.
                           </p>

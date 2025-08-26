@@ -2,14 +2,13 @@
 
 import {
   Card,
-  CardAction,
   CardDescription,
   // CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Delta, calculateMetricDeltas, type MetricsWithDelta } from "@/components/ui/delta";
-import { formatCtr, formatNumber, formatPosition } from "@/lib/formatters";
+import { formatCompactNumber, formatCtr, formatNumber, formatPosition } from "@/lib/formatters";
 import {
   IconClick,
   IconEye,
@@ -26,21 +25,28 @@ export function SectionCards({ metrics }: SectionCardsProps) {
   // Use centralized delta calculations
   const deltas = calculateMetricDeltas(metrics, metrics.previousPeriod);
 
+  // Helper to format numbers based on size to avoid overflow
+  const formatSmartNumber = (value: number | null | undefined): string => {
+    if (value === null || value === undefined) return "0";
+    // Use compact format for numbers > 999.999.999 to prevent overflow
+    return value > 999_999_999 ? formatCompactNumber(value) : formatNumber(value);
+  };
+
   return (
     <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs sm:grid-cols-2 lg:px-6 @5xl/main:grid-cols-5">
       {/* Conversões Card */}
       <Card className="@container/card">
         <CardHeader>
-          <CardDescription className="flex items-center gap-1.5">
-            <IconShoppingCart className="size-3.5 text-muted-foreground" />
-            Conversões
+          <CardDescription className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <IconShoppingCart className="size-3.5 text-muted-foreground" />
+              Conversões
+            </div>
+            <Delta value={deltas.conversionsChange} variant="percent" />
           </CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {formatNumber(metrics.conversions)}
+            {formatSmartNumber(metrics.conversions)}
           </CardTitle>
-          <CardAction>
-            <Delta value={deltas.conversionsChange} variant="percent" />
-          </CardAction>
         </CardHeader>
         {/* <CardFooter className="flex-col items-start gap-1.5 text-sm">
           <div className="flex items-center gap-2 font-medium">Lorem ipsum dolor sit amet</div>
@@ -51,16 +57,16 @@ export function SectionCards({ metrics }: SectionCardsProps) {
       {/* Impressões Card */}
       <Card className="@container/card">
         <CardHeader>
-          <CardDescription className="flex items-center gap-1.5">
-            <IconEye className="size-3.5 text-muted-foreground" />
-            Impressões
+          <CardDescription className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <IconEye className="size-3.5 text-muted-foreground" />
+              Impressões
+            </div>
+            <Delta value={deltas.impressionsChange} variant="percent" />
           </CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {formatNumber(metrics.impressions)}
+            {formatSmartNumber(metrics.impressions)}
           </CardTitle>
-          <CardAction>
-            <Delta value={deltas.impressionsChange} variant="percent" />
-          </CardAction>
         </CardHeader>
         {/* <CardFooter className="flex-col items-start gap-1.5 text-sm">
           <div className="flex items-center gap-2 font-medium">Lorem ipsum dolor sit amet</div>
@@ -71,32 +77,32 @@ export function SectionCards({ metrics }: SectionCardsProps) {
       {/* CTR Card */}
       <Card className="@container/card">
         <CardHeader>
-          <CardDescription className="flex items-center gap-1.5">
-            <IconPercentage className="size-3.5 text-muted-foreground" />
-            CTR
+          <CardDescription className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <IconPercentage className="size-3.5 text-muted-foreground" />
+              CTR
+            </div>
+            <Delta value={deltas.ctrChange} variant="absolute" precision={2} suffix="p.p." />
           </CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
             {formatCtr(metrics.ctr)}
           </CardTitle>
-          <CardAction>
-            <Delta value={deltas.ctrChange} variant="absolute" precision={2} suffix="p.p." />
-          </CardAction>
         </CardHeader>
       </Card>
 
       {/* Cliques Card */}
       <Card className="@container/card">
         <CardHeader>
-          <CardDescription className="flex items-center gap-1.5">
-            <IconClick className="size-3.5 text-muted-foreground" />
-            Cliques
+          <CardDescription className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <IconClick className="size-3.5 text-muted-foreground" />
+              Cliques
+            </div>
+            <Delta value={deltas.clicksChange} variant="percent" />
           </CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {formatNumber(metrics.clicks)}
+            {formatSmartNumber(metrics.clicks)}
           </CardTitle>
-          <CardAction>
-            <Delta value={deltas.clicksChange} variant="percent" />
-          </CardAction>
         </CardHeader>
         {/* <CardFooter className="flex-col items-start gap-1.5 text-sm">
           <div className="flex items-center gap-2 font-medium">Lorem ipsum dolor sit amet</div>
@@ -104,24 +110,24 @@ export function SectionCards({ metrics }: SectionCardsProps) {
         </CardFooter> */}
       </Card>
 
-      {/* Posição Média Card */}
+      {/* Posição Card */}
       <Card className="@container/card">
         <CardHeader>
-          <CardDescription className="flex items-center gap-1.5">
-            <IconInnerShadowTop className="size-3.5 text-muted-foreground" />
-            Posição Média
-          </CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {formatPosition(metrics.position)}
-          </CardTitle>
-          <CardAction>
+          <CardDescription className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <IconInnerShadowTop className="size-3.5 text-muted-foreground" />
+              Posição
+            </div>
             <Delta
               value={deltas.positionChange}
               variant="absolute"
               precision={1}
               positiveIcon="down"
             />
-          </CardAction>
+          </CardDescription>
+          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+            {formatPosition(metrics.position)}
+          </CardTitle>
         </CardHeader>
         {/* <CardFooter className="flex-col items-start gap-1.5 text-sm">
           <div className="flex items-center gap-2 font-medium">Lorem ipsum dolor sit amet</div>

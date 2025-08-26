@@ -32,16 +32,19 @@ pnpm build && pnpm start
 ## Architecture & Critical Files
 
 ### Authentication Flow
+
 - **middleware.ts**: Validates/refreshes Supabase session on every request via `updateSession()`
 - **lib/supabase/middleware.ts**: Session management with `getClaims()` to prevent random logouts
 - **lib/supabase/client.ts & server.ts**: Separate clients for browser/server environments
 
 ### Tailwind CSS v4 Configuration
+
 - **app/globals.css**: Uses single `@import "tailwindcss"` (v4 syntax)
 - **postcss.config.mjs**: Must use `@tailwindcss/postcss` plugin
 - **No tailwind.config.ts**: v4 uses CSS-based configuration via `@theme inline`
 
 ### Component Architecture
+
 - **components/ui/**: shadcn/ui components with `data-slot` attributes
 - **lib/utils.ts**: `cn()` helper combining `clsx` + `tailwind-merge`
 - **components/app-sidebar.tsx**: Main navigation component
@@ -58,12 +61,14 @@ pnpm build && pnpm start
 ## Code Quality Standards
 
 ### Biome Configuration
+
 - 2-space indentation, 100 char line width
 - Double quotes for strings
 - Auto-organize imports on save
 - Disabled linting for `components/ui/**` (shadcn components)
 
 ### TypeScript
+
 - Strict mode enabled across all tsconfig files
 - Generate DB types before using Supabase queries
 - Use type hints for complex helpers
@@ -71,6 +76,7 @@ pnpm build && pnpm start
 ## Supabase Integration
 
 ### Local Development
+
 ```bash
 # Start Supabase stack (uses Podman)
 podman machine start
@@ -82,6 +88,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 ```
 
 ### Database Migrations
+
 - Located in `supabase/migrations/`
 - Applied automatically on `pnpm db:reset:local`
 - Types regenerated with `pnpm db:types:local`
@@ -89,12 +96,14 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 ## Theme System
 
 ### Color Tokens (OKLCH)
+
 - Light/dark mode CSS variables in `app/globals.css`
 - Sidebar-specific colors for navigation
 - Chart colors (1-5) for data visualization
 - Applied via Tailwind utilities: `bg-background`, `text-foreground`, etc.
 
 ### Component Styling
+
 ```tsx
 // Use cn() for conditional classes
 import { cn } from "@/lib/utils"
