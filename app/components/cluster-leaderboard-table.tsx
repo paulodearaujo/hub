@@ -29,12 +29,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import {
-  calculateCtrPointsChange,
-  calculatePreviousCtr,
-  Delta,
-  getDeltaSortValue,
-} from "@/components/ui/delta";
+import { calculateCtrPointsChange, calculatePreviousCtr, Delta } from "@/components/ui/delta";
 // removed column toggle UI per request
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -43,6 +38,7 @@ import { TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Tables } from "@/lib/database.types";
 import { formatCtr, formatNumber, formatPosition } from "@/lib/formatters";
+import { getTableSortValue } from "@/lib/table-utils";
 import { cn } from "@/lib/utils";
 
 // Coerência não exibida no momento; thresholds removidos por ora (YAGNI)
@@ -103,35 +99,7 @@ export function ClusterLeaderboardTable({
   // Helper function to get sort value based on delta mode
   const getSortValue = React.useCallback(
     (row: Row<ClusterData>, columnId: string): number => {
-      if (deltaMode) {
-        // Special case for CTR - use calculated delta points
-        if (columnId === "gsc_ctr") {
-          const pp = row.original.gsc_ctr_delta;
-          if (typeof pp === "number") return pp;
-          // else compute via calculatePreviousCtr
-          const ctr = row.original.gsc_ctr;
-          const prevCtr = calculatePreviousCtr(
-            row.original.gsc_impressions,
-            row.original.gsc_clicks,
-            row.original.gsc_impressions_delta_pct,
-            row.original.gsc_clicks_delta_pct,
-          );
-          const change = calculateCtrPointsChange(ctr, prevCtr);
-          return Number.isFinite(change) ? change : 0;
-        }
-
-        // Use the delta utility function for other fields
-        const deltaValue = getDeltaSortValue(row.original, columnId);
-        if (deltaValue === null) {
-          const v = row.getValue(columnId);
-          return typeof v === "number" ? v : 0;
-        }
-        return deltaValue;
-      }
-
-      // Use absolute value
-      const value = row.getValue(columnId);
-      return typeof value === "number" ? value : 0;
+      return getTableSortValue(row.original, columnId, deltaMode, (col) => row.getValue(col));
     },
     [deltaMode],
   );

@@ -39,7 +39,7 @@ const chartConfig = {
   gsc_impressions: { label: "Impressões", color: "var(--chart-3)" },
   gsc_ctr: { label: "CTR", color: "var(--chart-5)" },
   gsc_clicks: { label: "Cliques", color: "var(--chart-1)" },
-  gsc_position: { label: "Posição Média", color: "var(--chart-4)" },
+  gsc_position: { label: "Posição Média", color: "var(--chart-6)" },
 } satisfies ChartConfig;
 
 export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetricsChartProps) {
@@ -135,7 +135,7 @@ export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetr
     const posVals = filteredData.map((d) => Number(d.gsc_position || 0));
     const maxPos = Math.max(...posVals);
     const minPos = Math.min(...posVals.filter((v) => v > 0).concat([0]));
-    const posDen = Math.max(1, maxPos - minPos);
+    const _posDen = Math.max(1, maxPos - minPos);
 
     const clampDiv = (num: number, den: number) => (den > 0 ? (num / den) * 100 : 0);
 
@@ -148,8 +148,8 @@ export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetr
       gsc_clicks_n: clampDiv(Number(d.gsc_clicks || 0), maxValues.gsc_clicks),
       gsc_impressions_n: clampDiv(Number(d.gsc_impressions || 0), maxValues.gsc_impressions),
       gsc_ctr_n: clampDiv(Number(d.gsc_ctr || 0), maxValues.gsc_ctr),
-      // Posição: menor é melhor → invertido e normalizado
-      gsc_position_n: ((maxPos - Number(d.gsc_position || 0)) / posDen) * 100,
+      // Posição: normalizada sem inversão (valor maior = linha sobe)
+      gsc_position_n: clampDiv(Number(d.gsc_position || 0), maxPos),
     }));
   }, [filteredData]);
 

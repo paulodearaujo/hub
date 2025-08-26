@@ -6,6 +6,8 @@
  * to ensure consistency between server and client rendering
  */
 
+import { format, parseISO, startOfWeek } from "date-fns";
+
 // Helper function to convert dot to comma (Brazilian standard)
 const toBrazilian = (value: string): string => value.replace(".", ",");
 
@@ -82,6 +84,17 @@ export function formatCtr(value: number | null | undefined): string {
 export function formatPosition(value: number | null | undefined): string {
   if (!isValid(value) || value === 0) return "0";
   return formatDecimal(value, 1);
+}
+
+/**
+ * Format week display showing date range
+ * @param weekEnding - ISO date string of week ending
+ * @returns Formatted string like "01/01 - 07/01/2024"
+ */
+export function formatWeekDisplay(weekEnding: string): string {
+  const date = parseISO(weekEnding);
+  const weekStart = startOfWeek(date, { weekStartsOn: 1 });
+  return `${format(weekStart, "dd/MM")} - ${format(date, "dd/MM/yyyy")}`;
 }
 
 /**

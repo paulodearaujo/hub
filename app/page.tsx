@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import { SectionCards } from "@/app/components/section-cards";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -10,8 +12,6 @@ import {
 } from "@/lib/data/metrics-queries";
 import type { Tables } from "@/lib/database.types";
 import { calculateMetricsWithDeltas } from "@/lib/delta-calculations";
-import type { Metadata } from "next";
-import dynamic from "next/dynamic";
 
 import { DashboardWrapper } from "./dashboard-wrapper";
 

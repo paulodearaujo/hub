@@ -1,7 +1,8 @@
 "use client";
 
-import * as React from "react";
+import type * as React from "react";
 import { SiteHeader } from "@/components/site-header";
+import { useNavigationState } from "@/hooks/use-navigation-state";
 
 interface ClusterWrapperProps {
   availableWeeks: string[];
@@ -16,12 +17,7 @@ export function ClusterWrapper({
   clusterId,
   children,
 }: ClusterWrapperProps) {
-  const [isPending, setIsPending] = React.useState(false);
-
-  // Pass isPending state from SiteHeader through a callback
-  const handleNavigationState = React.useCallback((pending: boolean) => {
-    setIsPending(pending);
-  }, []);
+  const { isPending, handleNavigationState } = useNavigationState();
 
   return (
     <>

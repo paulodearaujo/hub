@@ -1,3 +1,5 @@
+import type { Metadata, ResolvingMetadata } from "next";
+import dynamic from "next/dynamic";
 import { SectionCards } from "@/app/components/section-cards";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -10,8 +12,6 @@ import {
   getRunMetadata,
 } from "@/lib/data/metrics-queries";
 import { calculateMetricsWithDeltas } from "@/lib/delta-calculations";
-import type { Metadata, ResolvingMetadata } from "next";
-import dynamic from "next/dynamic";
 
 import { ClusterHeader } from "../components/cluster-header";
 import { ClusterWrapper } from "./cluster-wrapper";
