@@ -1,5 +1,5 @@
-import { AppSidebar } from "@/components/app-sidebar";
 import { SectionCards } from "@/app/components/section-cards";
+import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import {
   getAvailableWeeks,
@@ -99,7 +99,7 @@ export default async function Page({ params, searchParams }: PageProps) {
                   minSimilarity: info?.min_similarity || 0,
                   runDate: formattedClusterDate || undefined,
                 }}
-                backHref={`/dashboard${selectedWeeks.length ? `?weeks=${selectedWeeks.join(",")}` : ""}`}
+                backHref={`/${selectedWeeks.length ? `?weeks=${selectedWeeks.join(",")}` : ""}`}
               />
               <CardsSection clusterId={clusterId} selectedWeeks={selectedWeeks} />
               <ChartAndUrls

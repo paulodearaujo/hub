@@ -142,7 +142,7 @@ export function SiteHeader({
                       // Prefetch data for better performance
                       if (newSelection.length > 0) {
                         const weekParams = newSelection.join(",");
-                        router.prefetch(`/dashboard?weeks=${weekParams}`);
+                        router.prefetch(`/?weeks=${weekParams}`);
                       }
                     }}
                   />
