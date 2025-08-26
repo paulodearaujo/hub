@@ -1,23 +1,29 @@
 "use client";
 
-import { IconCalendar, IconRefresh } from "@tabler/icons-react";
-import { format, parseISO, startOfWeek } from "date-fns";
-import { useRouter } from "next/navigation";
-import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { IconCalendar, IconRefresh } from "@tabler/icons-react";
+import { format, parseISO, startOfWeek } from "date-fns";
+import { useRouter } from "next/navigation";
+import * as React from "react";
 
 interface SiteHeaderProps {
   availableWeeks?: string[];
   currentWeeks?: string[];
-  basePath?: string; // default "/"
+  basePath?: string;
   onNavigationStateChange?: (isPending: boolean) => void;
 }
 
+/**
+ * Site Header híbrido (2025)
+ * - Client Component para interações ricas
+ * - Usa navegação otimizada com compressão
+ * - URL sync para compartilhamento
+ */
 export function SiteHeader({
   availableWeeks = [],
   currentWeeks = [],
@@ -27,15 +33,11 @@ export function SiteHeader({
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
+  const [selectedWeeks, setSelectedWeeks] = React.useState<string[]>(currentWeeks);
 
-  // Notify parent component when loading state changes
   React.useEffect(() => {
     onNavigationStateChange?.(isPending);
   }, [isPending, onNavigationStateChange]);
-
-  // Use currentWeeks directly as the initial value, or default to availableWeeks
-  const defaultWeeks = currentWeeks.length > 0 ? currentWeeks : availableWeeks;
-  const [selectedWeeks, setSelectedWeeks] = React.useState<string[]>(defaultWeeks);
 
   const formatWeekDisplay = (weekEnding: string) => {
     const date = parseISO(weekEnding);
@@ -46,33 +48,32 @@ export function SiteHeader({
   const handleWeekToggle = (week: string) => {
     setSelectedWeeks((prev) => {
       const newSelection = prev.includes(week) ? prev.filter((w) => w !== week) : [...prev, week];
-
-      // Optional: Prefetch data in background (without showing loading state)
-      // This makes the actual navigation feel faster when user clicks Apply
-      if (newSelection.length > 0) {
-        const weekParams = newSelection.join(",");
-        router.prefetch(`${basePath}?weeks=${weekParams}`);
-      }
-
       return newSelection;
     });
   };
 
   const handleApplySelection = () => {
-    if (selectedWeeks.length > 0) {
-      const sortedWeeks = [...selectedWeeks].sort();
-      const weekParams = sortedWeeks.join(",");
+    setOpen(false);
 
-      // Close popover immediately
-      setOpen(false);
+    startTransition(() => {
+      // Constrói URL com os filtros selecionados
+      const params = new URLSearchParams();
 
-      // Navigate with transition to show loading state
-      startTransition(() => {
-        router.push(`${basePath}?weeks=${weekParams}`);
-      });
-    } else {
-      setOpen(false);
-    }
+      if (selectedWeeks.length > 0) {
+        params.set("weeks", selectedWeeks.sort().join(","));
+      }
+
+      const url = params.toString() ? `${basePath}?${params}` : basePath;
+      router.push(url);
+    });
+  };
+
+  const handleClear = () => {
+    setSelectedWeeks([]);
+    setOpen(false);
+    startTransition(() => {
+      router.push(basePath);
+    });
   };
 
   const displayText =
@@ -85,7 +86,7 @@ export function SiteHeader({
           : `${selectedWeeks.length} semanas selecionadas`;
 
   return (
-    <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
+    <header className="flex h-14 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-14">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
@@ -97,57 +98,38 @@ export function SiteHeader({
                 variant="outline"
                 size="sm"
                 className="w-full sm:w-80 justify-start text-left font-normal"
-                disabled={isPending}
               >
-                {isPending ? (
-                  <>
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
-                    <span className="truncate">Carregando...</span>
-                  </>
-                ) : (
-                  <>
-                    <IconCalendar className="mr-2 h-4 w-4" />
-                    <span className="truncate" suppressHydrationWarning>
-                      {displayText}
-                    </span>
-                  </>
-                )}
+                <IconCalendar className="mr-2 size-4 shrink-0" />
+                <span className="truncate">{displayText}</span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[min(92vw,360px)] p-0" align="end">
-              <div className="p-3">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium text-sm">Selecione as Semanas</h4>
+            <PopoverContent className="w-80 p-0" align="end">
+              <div className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-sm">Filtrar por Semana</h4>
                   <span className="text-xs text-muted-foreground">
                     {selectedWeeks.length} de {availableWeeks.length} selecionadas
                   </span>
                 </div>
 
-                {/* Header checkbox para selecionar/desmarcar todas */}
-                <label
-                  htmlFor="select-all-weeks"
-                  className="flex items-center space-x-2 p-2 mb-2 bg-muted/50 rounded-md hover:bg-muted transition-colors w-full cursor-pointer"
-                >
+                {/* Select All */}
+                <div className="flex items-center space-x-2 p-2 mb-2 bg-muted/50 rounded-md hover:bg-muted transition-colors w-full cursor-pointer">
                   <Checkbox
-                    id="select-all-weeks"
+                    id="select-all"
                     checked={
                       selectedWeeks.length === availableWeeks.length && availableWeeks.length > 0
                     }
-                    onCheckedChange={() => {
-                      const newSelection =
-                        selectedWeeks.length === availableWeeks.length ? [] : [...availableWeeks];
-
-                      setSelectedWeeks(newSelection);
-
-                      // Prefetch data for better performance
-                      if (newSelection.length > 0) {
-                        const weekParams = newSelection.join(",");
-                        router.prefetch(`/?weeks=${weekParams}`);
-                      }
+                    onCheckedChange={(checked) => {
+                      setSelectedWeeks(checked ? [...availableWeeks] : []);
                     }}
                   />
-                  <span className="text-sm font-medium flex-1 select-none">Todas as semanas</span>
-                </label>
+                  <label
+                    htmlFor="select-all"
+                    className="text-sm font-medium flex-1 select-none cursor-pointer"
+                  >
+                    Todas as semanas
+                  </label>
+                </div>
 
                 <Separator className="mb-2" />
 
@@ -159,36 +141,32 @@ export function SiteHeader({
                       </p>
                     ) : (
                       availableWeeks.map((week) => (
-                        <label
+                        <div
                           key={week}
-                          htmlFor={`week-checkbox-${week}`}
                           className="flex items-center space-x-2 p-2 hover:bg-muted rounded-md transition-colors w-full cursor-pointer"
                         >
                           <Checkbox
-                            id={`week-checkbox-${week}`}
+                            id={`week-${week}`}
                             checked={selectedWeeks.includes(week)}
                             onCheckedChange={() => handleWeekToggle(week)}
                           />
-                          <span className="text-sm font-normal flex-1 select-none">
+                          <label
+                            htmlFor={`week-${week}`}
+                            className="text-sm font-normal flex-1 select-none cursor-pointer"
+                          >
                             {formatWeekDisplay(week)}
-                          </span>
-                        </label>
+                          </label>
+                        </div>
                       ))
                     )}
                   </div>
                 </ScrollArea>
+
                 <Separator className="my-2" />
+
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => {
-                      setSelectedWeeks(defaultWeeks);
-                      setOpen(false);
-                    }}
-                  >
-                    Cancelar
+                  <Button variant="outline" size="sm" className="flex-1" onClick={handleClear}>
+                    Limpar
                   </Button>
                   <Button
                     size="sm"
@@ -202,7 +180,18 @@ export function SiteHeader({
               </div>
             </PopoverContent>
           </Popover>
-          <Button variant="outline" size="icon" className="size-8" onClick={() => router.refresh()}>
+
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-8"
+            onClick={() => {
+              startTransition(() => {
+                router.push(basePath);
+                router.refresh();
+              });
+            }}
+          >
             <IconRefresh className="size-4" />
           </Button>
         </div>

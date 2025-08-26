@@ -1,21 +1,21 @@
 "use client";
 
 import {
-  Card,
-  CardDescription,
-  // CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Delta, calculateMetricDeltas, type MetricsWithDelta } from "@/components/ui/delta";
-import { formatCompactNumber, formatCtr, formatNumber, formatPosition } from "@/lib/formatters";
-import {
   IconClick,
   IconEye,
   IconInnerShadowTop,
   IconPercentage,
   IconShoppingCart,
 } from "@tabler/icons-react";
+import {
+  Card,
+  CardDescription,
+  // CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { calculateMetricDeltas, Delta, type MetricsWithDelta } from "@/components/ui/delta";
+import { formatCompactNumber, formatCtr, formatNumber, formatPosition } from "@/lib/formatters";
 
 interface SectionCardsProps {
   metrics: MetricsWithDelta;

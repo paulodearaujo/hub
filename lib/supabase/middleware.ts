@@ -1,7 +1,7 @@
-import type { Database } from "@/lib/database.types";
 import { createServerClient } from "@supabase/ssr";
 import type { ResponseCookie } from "next/dist/compiled/@edge-runtime/cookies";
 import { type NextRequest, NextResponse } from "next/server";
+import type { Database } from "@/lib/database.types";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -10,7 +10,8 @@ export async function updateSession(request: NextRequest) {
 
   // Check if we have the required environment variables
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  const anon =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY;
 
   if (!url || !anon) {
@@ -26,13 +27,9 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(
-          cookiesToSet: Array<
-            { name: string; value: string; options?: Partial<ResponseCookie> }
-          >,
+          cookiesToSet: Array<{ name: string; value: string; options?: Partial<ResponseCookie> }>,
         ) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           supabaseResponse = NextResponse.next({
             request,
           });

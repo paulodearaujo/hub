@@ -12,6 +12,7 @@ import {
 import { calculateMetricsWithDeltas } from "@/lib/delta-calculations";
 import type { Metadata, ResolvingMetadata } from "next";
 import dynamic from "next/dynamic";
+
 import { ClusterHeader } from "../components/cluster-header";
 import { ClusterWrapper } from "./cluster-wrapper";
 
@@ -62,7 +63,7 @@ export default async function Page({ params, searchParams }: PageProps) {
 
   const availableWeeks = await getAvailableWeeks();
   const selectedWeeks = weeks
-    ? weeks.split(",").filter((w) => availableWeeks.includes(w))
+    ? weeks.split(",").filter((w) => w && availableWeeks.includes(w))
     : (availableWeeks as string[]);
 
   const clusterId = Number.parseInt(id, 10);

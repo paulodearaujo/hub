@@ -1,5 +1,5 @@
-import { AppSidebar } from "@/components/app-sidebar";
 import { SectionCards } from "@/app/components/section-cards";
+import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import {
   getAvailableWeeks,
@@ -12,6 +12,7 @@ import type { Tables } from "@/lib/database.types";
 import { calculateMetricsWithDeltas } from "@/lib/delta-calculations";
 import type { Metadata } from "next";
 import dynamic from "next/dynamic";
+
 import { DashboardWrapper } from "./dashboard-wrapper";
 
 export const metadata: Metadata = {
@@ -66,7 +67,9 @@ export default async function Page({ searchParams }: PageProps) {
   let selectedWeeks: string[] = [];
 
   if (params.weeks) {
-    selectedWeeks = params.weeks.split(",").filter((w) => availableWeeks.includes(w));
+    // Parse weeks from comma-separated string
+    const parsedWeeks = params.weeks.split(",").filter(Boolean);
+    selectedWeeks = parsedWeeks.filter((w) => availableWeeks.includes(w));
   } else if (params.week) {
     // Backwards compatibility with single week param
     selectedWeeks = [params.week].filter((w) => availableWeeks.includes(w));

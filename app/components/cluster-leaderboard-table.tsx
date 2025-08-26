@@ -1,8 +1,13 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { calculateCtrPointsChange, calculatePreviousCtr, Delta } from "@/components/ui/delta";
-import { IconArrowDown, IconArrowsUpDown, IconArrowUp, IconSearch } from "@tabler/icons-react";
+import {
+  IconArrowDown,
+  IconArrowsUpDown,
+  IconArrowUp,
+  IconHash,
+  IconSearch,
+  IconTrendingUp,
+} from "@tabler/icons-react";
 import type {
   Cell,
   Column,
@@ -23,12 +28,22 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
+import { Button } from "@/components/ui/button";
+import {
+  calculateCtrPointsChange,
+  calculatePreviousCtr,
+  Delta,
+  getDeltaSortValue,
+} from "@/components/ui/delta";
 // removed column toggle UI per request
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 // removed pagination controls per request
 import { TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Tables } from "@/lib/database.types";
 import { formatCtr, formatNumber, formatPosition } from "@/lib/formatters";
+import { cn } from "@/lib/utils";
 
 // Coerência não exibida no momento; thresholds removidos por ora (YAGNI)
 
@@ -56,6 +71,7 @@ interface ClusterData
   amplitude_conversions_delta_pct?: number;
   gsc_position_delta?: number;
   gsc_position_delta_pct?: number;
+  gsc_ctr_delta?: number;
 }
 
 export function ClusterLeaderboardTable({
@@ -75,6 +91,7 @@ export function ClusterLeaderboardTable({
   const [columnVisibility] = React.useState<Record<string, boolean>>({});
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [inputValue, setInputValue] = React.useState("");
+  const [deltaMode, setDeltaMode] = React.useState(false);
   const deferredInput = React.useDeferredValue(inputValue);
   React.useEffect(() => {
     setGlobalFilter(deferredInput);
@@ -82,6 +99,42 @@ export function ClusterLeaderboardTable({
 
   const weeksParam =
     selectedWeeks && selectedWeeks.length > 0 ? `?weeks=${selectedWeeks.join(",")}` : "";
+
+  // Helper function to get sort value based on delta mode
+  const getSortValue = React.useCallback(
+    (row: Row<ClusterData>, columnId: string): number => {
+      if (deltaMode) {
+        // Special case for CTR - use calculated delta points
+        if (columnId === "gsc_ctr") {
+          const pp = row.original.gsc_ctr_delta;
+          if (typeof pp === "number") return pp;
+          // else compute via calculatePreviousCtr
+          const ctr = row.original.gsc_ctr;
+          const prevCtr = calculatePreviousCtr(
+            row.original.gsc_impressions,
+            row.original.gsc_clicks,
+            row.original.gsc_impressions_delta_pct,
+            row.original.gsc_clicks_delta_pct,
+          );
+          const change = calculateCtrPointsChange(ctr, prevCtr);
+          return Number.isFinite(change) ? change : 0;
+        }
+
+        // Use the delta utility function for other fields
+        const deltaValue = getDeltaSortValue(row.original, columnId);
+        if (deltaValue === null) {
+          const v = row.getValue(columnId);
+          return typeof v === "number" ? v : 0;
+        }
+        return deltaValue;
+      }
+
+      // Use absolute value
+      const value = row.getValue(columnId);
+      return typeof value === "number" ? value : 0;
+    },
+    [deltaMode],
+  );
 
   // Reusable sortable header (shadcn style)
   const SortableHeader = React.useCallback(
@@ -108,6 +161,7 @@ export function ClusterLeaderboardTable({
         >
           <span className="inline-flex items-center gap-1">
             <span>{title}</span>
+            {deltaMode && <IconTrendingUp className="size-3 text-primary" />}
             <span className="inline-flex w-4 justify-center">
               {column.getIsSorted() === "asc" ? (
                 <IconArrowUp className="size-3" />
@@ -121,7 +175,7 @@ export function ClusterLeaderboardTable({
         </Button>
       );
     },
-    [],
+    [deltaMode],
   );
 
   const columns: ColumnDef<ClusterData>[] = React.useMemo(
@@ -142,6 +196,11 @@ export function ClusterLeaderboardTable({
       },
       {
         accessorKey: "cluster_size",
+        sortingFn: (rowA: Row<ClusterData>, rowB: Row<ClusterData>, columnId: string) => {
+          const aValue = getSortValue(rowA, columnId);
+          const bValue = getSortValue(rowB, columnId);
+          return aValue - bValue;
+        },
         header: ({ column }: { column: Column<ClusterData> }) => (
           <SortableHeader column={column} title="Páginas" align="center" />
         ),
@@ -152,6 +211,11 @@ export function ClusterLeaderboardTable({
       // Ordem dos cards: Conversões, Impressões, CTR, Cliques, Posição
       {
         accessorKey: "amplitude_conversions",
+        sortingFn: (rowA: Row<ClusterData>, rowB: Row<ClusterData>, columnId: string) => {
+          const aValue = getSortValue(rowA, columnId);
+          const bValue = getSortValue(rowB, columnId);
+          return aValue - bValue;
+        },
         header: ({ column }: { column: Column<ClusterData> }) => (
           <SortableHeader column={column} title="Conversões" />
         ),
@@ -168,6 +232,11 @@ export function ClusterLeaderboardTable({
       },
       {
         accessorKey: "gsc_impressions",
+        sortingFn: (rowA: Row<ClusterData>, rowB: Row<ClusterData>, columnId: string) => {
+          const aValue = getSortValue(rowA, columnId);
+          const bValue = getSortValue(rowB, columnId);
+          return aValue - bValue;
+        },
         header: ({ column }: { column: Column<ClusterData> }) => (
           <SortableHeader column={column} title="Impressões" />
         ),
@@ -184,6 +253,11 @@ export function ClusterLeaderboardTable({
       },
       {
         accessorKey: "gsc_ctr",
+        sortingFn: (rowA: Row<ClusterData>, rowB: Row<ClusterData>, columnId: string) => {
+          const aValue = getSortValue(rowA, columnId);
+          const bValue = getSortValue(rowB, columnId);
+          return aValue - bValue;
+        },
         header: ({ column }: { column: Column<ClusterData> }) => (
           <SortableHeader column={column} title="CTR" />
         ),
@@ -207,6 +281,11 @@ export function ClusterLeaderboardTable({
       },
       {
         accessorKey: "gsc_clicks",
+        sortingFn: (rowA: Row<ClusterData>, rowB: Row<ClusterData>, columnId: string) => {
+          const aValue = getSortValue(rowA, columnId);
+          const bValue = getSortValue(rowB, columnId);
+          return aValue - bValue;
+        },
         header: ({ column }: { column: Column<ClusterData> }) => (
           <SortableHeader column={column} title="Cliques" />
         ),
@@ -223,6 +302,11 @@ export function ClusterLeaderboardTable({
       },
       {
         accessorKey: "gsc_position",
+        sortingFn: (rowA: Row<ClusterData>, rowB: Row<ClusterData>, columnId: string) => {
+          const aValue = getSortValue(rowA, columnId);
+          const bValue = getSortValue(rowB, columnId);
+          return aValue - bValue;
+        },
         header: ({ column }: { column: Column<ClusterData> }) => (
           <SortableHeader column={column} title="Posição" />
         ),
@@ -240,7 +324,7 @@ export function ClusterLeaderboardTable({
       // CTR: importado/derivado mas não exibido no momento
       // Coerência removida do leaderboard atual (mantida apenas no back)
     ],
-    [weeksParam, SortableHeader],
+    [weeksParam, SortableHeader, getSortValue],
   );
 
   const table = useReactTable({
@@ -280,6 +364,40 @@ export function ClusterLeaderboardTable({
               onChange={(event) => setInputValue(event.target.value)}
               className="pl-8"
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <IconHash
+                    className={cn(
+                      "size-4 transition-opacity",
+                      !deltaMode ? "opacity-100" : "opacity-40",
+                    )}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">Ordenar por valores absolutos</TooltipContent>
+            </Tooltip>
+            <Switch
+              checked={deltaMode}
+              onCheckedChange={setDeltaMode}
+              aria-label="Alternar entre valor absoluto e variação"
+              className="data-[state=checked]:bg-primary"
+            />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <IconTrendingUp
+                    className={cn(
+                      "size-4 transition-opacity",
+                      deltaMode ? "opacity-100" : "opacity-40",
+                    )}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">Ordenar por variação percentual</TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </div>

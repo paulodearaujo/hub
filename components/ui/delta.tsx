@@ -1,8 +1,8 @@
 "use client";
 
+import { IconTrendingDown, IconTrendingUp } from "@tabler/icons-react";
 import { formatPercentageChange } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
-import { IconTrendingDown, IconTrendingUp } from "@tabler/icons-react";
 
 // Re-export calculation utilities from lib
 export {
@@ -13,10 +13,10 @@ export {
   calculatePositionDelta,
   calculatePreviousCtr,
   calculatePreviousFromDeltaPct,
-  splitWeeksPeriods,
   type DeltaCalculations,
-  type MetricValues,
   type MetricsWithDelta,
+  type MetricValues,
+  splitWeeksPeriods,
 } from "@/lib/delta-calculations";
 
 // ============================================================================
@@ -126,6 +126,66 @@ export function Delta({
       </span>
     </span>
   );
+}
+
+// ============================================================================
+// Utility Functions for Delta Sorting
+// ============================================================================
+
+/**
+ * Maps absolute field names to their delta equivalents
+ * @param fieldName - The absolute field name (e.g., 'gsc_clicks')
+ * @returns The delta field name (e.g., 'gsc_clicks_delta_pct')
+ */
+export function getDeltaFieldName(fieldName: string): string {
+  // Special case for position - uses absolute delta instead of percentage
+  if (fieldName === "gsc_position" || fieldName === "gsc_position_average") {
+    return "gsc_position_delta";
+  }
+
+  // Map standard fields to their percentage delta equivalents
+  const deltaFieldMap: Record<string, string> = {
+    gsc_clicks: "gsc_clicks_delta_pct",
+    gsc_impressions: "gsc_impressions_delta_pct",
+    gsc_ctr_average: "gsc_ctr_delta", // CTR delta is in points, not percentage
+    ga_users: "ga_users_delta_pct",
+    ga_sessions: "ga_sessions_delta_pct",
+    ga_screen_page_views: "ga_screen_page_views_delta_pct",
+    ga_conversions: "ga_conversions_delta_pct",
+    ga_conversion_rate: "ga_conversion_rate_delta", // Conversion rate delta is in points
+    ga_average_session_duration: "ga_average_session_duration_delta_pct",
+    ga_bounce_rate: "ga_bounce_rate_delta", // Bounce rate delta is in points
+    ga_engagement_rate: "ga_engagement_rate_delta", // Engagement rate delta is in points
+    revenue: "revenue_delta_pct",
+  };
+
+  return deltaFieldMap[fieldName] || `${fieldName}_delta_pct`;
+}
+
+/**
+ * Extracts the delta sort value from a data object
+ * @param data - The data object containing metrics
+ * @param fieldName - The absolute field name
+ * @returns The delta value for sorting (null if not available)
+ */
+export function getDeltaSortValue(data: any, fieldName: string): number | null {
+  const deltaFieldName = getDeltaFieldName(fieldName);
+  const value = data[deltaFieldName];
+
+  // Handle null/undefined
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  // Convert to number and handle special cases
+  const numValue = Number(value);
+
+  // Handle NaN and Infinity
+  if (!Number.isFinite(numValue)) {
+    return null;
+  }
+
+  return numValue;
 }
 
 export default Delta;

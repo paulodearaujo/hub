@@ -1,33 +1,15 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { calculateCtrPointsChange, calculatePreviousCtr, Delta } from "@/components/ui/delta";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-import { TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import type { ClusterUrlAggregates } from "@/lib/data/metrics-queries";
-import { formatCtr, formatNumber, formatPosition } from "@/lib/formatters";
 import {
   IconArrowDown,
   IconArrowsUpDown,
   IconArrowUp,
   IconDownload,
   IconExternalLink,
+  IconHash,
   IconPencil,
   IconSearch,
+  IconTrendingUp,
 } from "@tabler/icons-react";
 import type {
   Cell,
@@ -47,6 +29,33 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import * as React from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  calculateCtrPointsChange,
+  calculatePreviousCtr,
+  Delta,
+  getDeltaSortValue,
+} from "@/components/ui/delta";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { ClusterUrlAggregates } from "@/lib/data/metrics-queries";
+import { formatCtr, formatNumber, formatPosition } from "@/lib/formatters";
+import { cn } from "@/lib/utils";
 
 // Helper: width/alignment classes per column id (simpler & DRY)
 const COLUMN_CLASS: Record<string, string> = {
@@ -66,9 +75,11 @@ function getColumnClass(id: string): string {
 function SortableHeader({
   column,
   label,
+  isDeltaMode = false,
 }: {
   column: Column<ClusterUrlAggregates>;
   label: string;
+  isDeltaMode?: boolean;
 }) {
   return (
     <Button
@@ -78,6 +89,7 @@ function SortableHeader({
     >
       <span className="inline-flex items-center gap-1">
         <span>{label}</span>
+        {isDeltaMode && <IconTrendingUp className="size-3 text-primary" />}
         <span className="inline-flex w-4 justify-center">
           {column.getIsSorted() === "asc" ? (
             <IconArrowUp className="size-3" />
@@ -121,156 +133,237 @@ function sanitizeForFilename(s: string): string {
     .slice(0, 80);
 }
 
-const columns: ColumnDef<ClusterUrlAggregates>[] = [
-  {
-    id: "select",
-    header: ({ table }: { table: ReactTableType<ClusterUrlAggregates> }) => (
-      <Checkbox
-        checked={table.getIsAllRowsSelected()}
-        onCheckedChange={(value) => table.toggleAllRowsSelected(!!value)}
-        aria-checked={table.getIsSomeRowsSelected() ? "mixed" : table.getIsAllRowsSelected()}
-        aria-label="Selecionar todas as linhas"
-      />
-    ),
-    cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Selecionar linha"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "name",
-    header: "Página",
-    cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => {
-      const url = row.original.url;
-      const title = row.original.name || url;
-      const tooltip =
-        title === url ? (
-          url
-        ) : (
-          <div className="max-w-[80vw]">
-            <div className="font-medium mb-1 break-words">{title}</div>
-            <div className="opacity-80 break-all text-xs">{url}</div>
+// Create columns with deltaMode parameter
+function createColumns(deltaMode: boolean): ColumnDef<ClusterUrlAggregates>[] {
+  // Helper function to get sort value based on delta mode
+  const getSortValue = (row: Row<ClusterUrlAggregates>, columnId: string): number => {
+    if (deltaMode) {
+      // Special case for CTR - use calculated delta points
+      if (columnId === "gsc_ctr") {
+        const pp = row.original.gsc_ctr_delta;
+        if (typeof pp === "number") return pp;
+        // else compute via calculatePreviousCtr
+        const ctr = row.original.gsc_ctr;
+        const prevCtr = calculatePreviousCtr(
+          row.original.gsc_impressions,
+          row.original.gsc_clicks,
+          row.original.gsc_impressions_delta_pct,
+          row.original.gsc_clicks_delta_pct,
+        );
+        const change = calculateCtrPointsChange(ctr, prevCtr);
+        return Number.isFinite(change) ? change : 0;
+      }
+
+      // Use the delta utility function for other fields
+      const deltaValue = getDeltaSortValue(row.original, columnId);
+      if (deltaValue === null) {
+        const v = row.getValue(columnId);
+        return typeof v === "number" ? v : 0;
+      }
+      return deltaValue;
+    }
+
+    // Use absolute value
+    const value = row.getValue(columnId);
+    return typeof value === "number" ? value : 0;
+  };
+
+  return [
+    {
+      id: "select",
+      header: ({ table }: { table: ReactTableType<ClusterUrlAggregates> }) => (
+        <Checkbox
+          checked={table.getIsAllRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllRowsSelected(!!value)}
+          aria-checked={table.getIsSomeRowsSelected() ? "mixed" : table.getIsAllRowsSelected()}
+          aria-label="Selecionar todas as linhas"
+        />
+      ),
+      cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Selecionar linha"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "name",
+      header: "Página",
+      cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => {
+        const url = row.original.url;
+        const title = row.original.name || url;
+        const tooltip =
+          title === url ? (
+            url
+          ) : (
+            <div className="max-w-[80vw]">
+              <div className="font-medium mb-1 break-words">{title}</div>
+              <div className="opacity-80 break-all text-xs">{url}</div>
+            </div>
+          );
+        return (
+          <div className="flex items-center gap-2 min-w-0">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium hover:underline truncate block"
+                  title={undefined}
+                >
+                  {title}
+                </a>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={6} className="max-w-[80vw]">
+                {tooltip}
+              </TooltipContent>
+            </Tooltip>
+            <IconExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
           </div>
         );
-      return (
-        <div className="flex items-center gap-2 min-w-0">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <a
-                href={url}
-                target="_blank"
-                rel="noreferrer"
-                className="font-medium hover:underline truncate block"
-                title={undefined}
-              >
-                {title}
-              </a>
-            </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={6} className="max-w-[80vw]">
-              {tooltip}
-            </TooltipContent>
-          </Tooltip>
-          <IconExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
-        </div>
-      );
+      },
     },
-  },
-  // Conversões
-  {
-    accessorKey: "amplitude_conversions",
-    header: ({ column }: { column: Column<ClusterUrlAggregates> }) => (
-      <SortableHeader column={column} label="Conversões" />
-    ),
-    cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => {
-      const pct = row.original.amplitude_conversions_delta_pct ?? 0;
-      return (
-        <div className="flex flex-col items-end">
-          <div className="text-right font-medium">
-            {formatNumber(row.original.amplitude_conversions)}
+    // Conversões
+    {
+      accessorKey: "amplitude_conversions",
+      sortingFn: (
+        rowA: Row<ClusterUrlAggregates>,
+        rowB: Row<ClusterUrlAggregates>,
+        columnId: string,
+      ) => {
+        const aValue = getSortValue(rowA, columnId);
+        const bValue = getSortValue(rowB, columnId);
+        return aValue - bValue;
+      },
+      header: ({ column }: { column: Column<ClusterUrlAggregates> }) => (
+        <SortableHeader column={column} label="Conversões" isDeltaMode={deltaMode} />
+      ),
+      cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => {
+        const pct = row.original.amplitude_conversions_delta_pct ?? 0;
+        return (
+          <div className="flex flex-col items-end">
+            <div className="text-right font-medium">
+              {formatNumber(row.original.amplitude_conversions)}
+            </div>
+            <Delta value={pct} variant="percent" />
           </div>
-          <Delta value={pct} variant="percent" />
-        </div>
-      );
+        );
+      },
     },
-  },
-  // Impressões
-  {
-    accessorKey: "gsc_impressions",
-    header: ({ column }: { column: Column<ClusterUrlAggregates> }) => (
-      <SortableHeader column={column} label="Impressões" />
-    ),
-    cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => {
-      const pct = row.original.gsc_impressions_delta_pct ?? 0;
-      return (
-        <div className="flex flex-col items-end">
-          <div className="text-right">{formatNumber(row.original.gsc_impressions)}</div>
-          <Delta value={pct} variant="percent" />
-        </div>
-      );
+    // Impressões
+    {
+      accessorKey: "gsc_impressions",
+      sortingFn: (
+        rowA: Row<ClusterUrlAggregates>,
+        rowB: Row<ClusterUrlAggregates>,
+        columnId: string,
+      ) => {
+        const aValue = getSortValue(rowA, columnId);
+        const bValue = getSortValue(rowB, columnId);
+        return aValue - bValue;
+      },
+      header: ({ column }: { column: Column<ClusterUrlAggregates> }) => (
+        <SortableHeader column={column} label="Impressões" isDeltaMode={deltaMode} />
+      ),
+      cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => {
+        const pct = row.original.gsc_impressions_delta_pct ?? 0;
+        return (
+          <div className="flex flex-col items-end">
+            <div className="text-right">{formatNumber(row.original.gsc_impressions)}</div>
+            <Delta value={pct} variant="percent" />
+          </div>
+        );
+      },
     },
-  },
-  // CTR
-  {
-    accessorKey: "gsc_ctr",
-    header: ({ column }: { column: Column<ClusterUrlAggregates> }) => (
-      <SortableHeader column={column} label="CTR" />
-    ),
-    cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => {
-      const ctr = row.original.gsc_ctr ?? 0;
-      // Use centralized functions for calculations
-      const prevCtr = calculatePreviousCtr(
-        row.original.gsc_impressions,
-        row.original.gsc_clicks,
-        row.original.gsc_impressions_delta_pct,
-        row.original.gsc_clicks_delta_pct,
-      );
-      const ctrDeltaPP = calculateCtrPointsChange(ctr, prevCtr);
-      return (
-        <div className="flex flex-col items-end">
-          <div className="text-right font-medium">{formatCtr(ctr)}</div>
-          <Delta value={ctrDeltaPP} variant="absolute" precision={1} suffix="p.p." />
-        </div>
-      );
+    // CTR
+    {
+      accessorKey: "gsc_ctr",
+      sortingFn: (
+        rowA: Row<ClusterUrlAggregates>,
+        rowB: Row<ClusterUrlAggregates>,
+        columnId: string,
+      ) => {
+        const aValue = getSortValue(rowA, columnId);
+        const bValue = getSortValue(rowB, columnId);
+        return aValue - bValue;
+      },
+      header: ({ column }: { column: Column<ClusterUrlAggregates> }) => (
+        <SortableHeader column={column} label="CTR" isDeltaMode={deltaMode} />
+      ),
+      cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => {
+        const ctr = row.original.gsc_ctr ?? 0;
+        // Use centralized functions for calculations
+        const prevCtr = calculatePreviousCtr(
+          row.original.gsc_impressions,
+          row.original.gsc_clicks,
+          row.original.gsc_impressions_delta_pct,
+          row.original.gsc_clicks_delta_pct,
+        );
+        const ctrDeltaPP = calculateCtrPointsChange(ctr, prevCtr);
+        return (
+          <div className="flex flex-col items-end">
+            <div className="text-right font-medium">{formatCtr(ctr)}</div>
+            <Delta value={ctrDeltaPP} variant="absolute" precision={1} suffix="p.p." />
+          </div>
+        );
+      },
     },
-  },
-  // Cliques
-  {
-    accessorKey: "gsc_clicks",
-    header: ({ column }: { column: Column<ClusterUrlAggregates> }) => (
-      <SortableHeader column={column} label="Cliques" />
-    ),
-    cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => {
-      const pct = row.original.gsc_clicks_delta_pct ?? 0;
-      return (
-        <div className="flex flex-col items-end">
-          <div className="text-right font-medium">{formatNumber(row.original.gsc_clicks)}</div>
-          <Delta value={pct} variant="percent" />
-        </div>
-      );
+    // Cliques
+    {
+      accessorKey: "gsc_clicks",
+      sortingFn: (
+        rowA: Row<ClusterUrlAggregates>,
+        rowB: Row<ClusterUrlAggregates>,
+        columnId: string,
+      ) => {
+        const aValue = getSortValue(rowA, columnId);
+        const bValue = getSortValue(rowB, columnId);
+        return aValue - bValue;
+      },
+      header: ({ column }: { column: Column<ClusterUrlAggregates> }) => (
+        <SortableHeader column={column} label="Cliques" isDeltaMode={deltaMode} />
+      ),
+      cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => {
+        const pct = row.original.gsc_clicks_delta_pct ?? 0;
+        return (
+          <div className="flex flex-col items-end">
+            <div className="text-right font-medium">{formatNumber(row.original.gsc_clicks)}</div>
+            <Delta value={pct} variant="percent" />
+          </div>
+        );
+      },
     },
-  },
-  // Posição
-  {
-    accessorKey: "gsc_position",
-    header: ({ column }: { column: Column<ClusterUrlAggregates> }) => (
-      <SortableHeader column={column} label="Posição" />
-    ),
-    cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => {
-      const delta = row.original.gsc_position_delta ?? 0;
-      return (
-        <div className="flex flex-col items-end">
-          <div className="text-right">{formatPosition(row.original.gsc_position)}</div>
-          <Delta value={delta} variant="absolute" precision={1} positiveIcon="down" />
-        </div>
-      );
+    // Posição
+    {
+      accessorKey: "gsc_position",
+      sortingFn: (
+        rowA: Row<ClusterUrlAggregates>,
+        rowB: Row<ClusterUrlAggregates>,
+        columnId: string,
+      ) => {
+        const aValue = getSortValue(rowA, columnId);
+        const bValue = getSortValue(rowB, columnId);
+        return aValue - bValue;
+      },
+      header: ({ column }: { column: Column<ClusterUrlAggregates> }) => (
+        <SortableHeader column={column} label="Posição" isDeltaMode={deltaMode} />
+      ),
+      cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => {
+        const delta = row.original.gsc_position_delta ?? 0;
+        return (
+          <div className="flex flex-col items-end">
+            <div className="text-right">{formatPosition(row.original.gsc_position)}</div>
+            <Delta value={delta} variant="absolute" precision={1} positiveIcon="down" />
+          </div>
+        );
+      },
     },
-  },
-];
+  ];
+}
 
 export function ClusterUrlsTable({
   data = [] as ClusterUrlAggregates[],
@@ -287,11 +380,15 @@ export function ClusterUrlsTable({
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [inputValue, setInputValue] = React.useState("");
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
+  const [deltaMode, setDeltaMode] = React.useState(false);
   const deferredInput = React.useDeferredValue(inputValue);
   React.useEffect(() => {
     setGlobalFilter(deferredInput);
   }, [deferredInput]);
   const [columnVisibility] = React.useState<Record<string, boolean>>({});
+
+  // Create columns with current deltaMode
+  const columns = React.useMemo(() => createColumns(deltaMode), [deltaMode]);
 
   const table = useReactTable({
     data,
@@ -370,78 +467,78 @@ export function ClusterUrlsTable({
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <h2 className="text-lg font-semibold">Páginas do Cluster</h2>
         <div className="flex items-center gap-2 ml-auto">
-          {selectedCount > 0 ? (
-            <Drawer>
+          {selectedCount > 0 && (
+            <>
+              <Drawer>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DrawerTrigger asChild>
+                      <Button type="button" className="bg-black text-white hover:bg-black/90">
+                        <IconPencil className="size-4" />
+                        Revisar conteúdo
+                      </Button>
+                    </DrawerTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    Enviar os textos selecionados para revisão
+                  </TooltipContent>
+                </Tooltip>
+                <DrawerContent>
+                  <div className="mx-auto w-full max-w-xl px-6 py-6">
+                    <DrawerHeader className="text-center space-y-2">
+                      <div className="flex items-center justify-center gap-4">
+                        <Avatar className="size-12 ring-2 ring-black/10 shadow-sm">
+                          <AvatarImage src="/everaldo.png" alt="Foto de Everaldo" />
+                          <AvatarFallback>EV</AvatarFallback>
+                        </Avatar>
+                        <div className="text-center min-w-0">
+                          <DrawerTitle asChild>
+                            <h2 className="text-2xl font-semibold">Enviar para revisão</h2>
+                          </DrawerTitle>
+                          <DrawerDescription asChild>
+                            <p className="text-base text-muted-foreground whitespace-nowrap">
+                              Você vai enviar <span className="font-medium">{selectedCount}</span>{" "}
+                              texto{plural} para o Everaldo revisar.
+                            </p>
+                          </DrawerDescription>
+                        </div>
+                      </div>
+                    </DrawerHeader>
+                    <Separator className="my-4" />
+                    <div className="text-sm text-muted-foreground mb-2 text-center">
+                      Confirme para prosseguir ou cancele para ajustar a seleção.
+                    </div>
+                    <DrawerFooter className="pt-2 grid gap-3 sm:grid-cols-2">
+                      <DrawerClose asChild>
+                        <Button size="lg" className="w-full bg-black text-white hover:bg-black/90">
+                          Confirmar envio
+                        </Button>
+                      </DrawerClose>
+                      <DrawerClose asChild>
+                        <Button size="lg" variant="outline" className="w-full">
+                          Cancelar
+                        </Button>
+                      </DrawerClose>
+                    </DrawerFooter>
+                  </div>
+                </DrawerContent>
+              </Drawer>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <DrawerTrigger asChild>
-                    <Button type="button" className="bg-black text-white hover:bg-black/90">
-                      <IconPencil className="size-4" />
-                      Revisar conteúdo
-                    </Button>
-                  </DrawerTrigger>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={exportSelectedToCSV}
+                    className="gap-2"
+                  >
+                    <IconDownload className="size-4" />
+                    Exportar CSV
+                  </Button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  Enviar os textos selecionados para revisão
-                </TooltipContent>
+                <TooltipContent side="bottom">Exportar itens selecionados em CSV</TooltipContent>
               </Tooltip>
-              <DrawerContent>
-                <div className="mx-auto w-full max-w-xl px-6 py-6">
-                  <DrawerHeader className="text-center space-y-2">
-                    <div className="flex items-center justify-center gap-4">
-                      <Avatar className="size-12 ring-2 ring-black/10 shadow-sm">
-                        <AvatarImage src="/everaldo.png" alt="Foto de Everaldo" />
-                        <AvatarFallback>EV</AvatarFallback>
-                      </Avatar>
-                      <div className="text-center min-w-0">
-                        <DrawerTitle asChild>
-                          <h2 className="text-2xl font-semibold">Enviar para revisão</h2>
-                        </DrawerTitle>
-                        <DrawerDescription asChild>
-                          <p className="text-base text-muted-foreground whitespace-nowrap">
-                            Você vai enviar <span className="font-medium">{selectedCount}</span>{" "}
-                            texto{plural} para o Everaldo revisar.
-                          </p>
-                        </DrawerDescription>
-                      </div>
-                    </div>
-                  </DrawerHeader>
-                  <Separator className="my-4" />
-                  <div className="text-sm text-muted-foreground mb-2 text-center">
-                    Confirme para prosseguir ou cancele para ajustar a seleção.
-                  </div>
-                  <DrawerFooter className="pt-2 grid gap-3 sm:grid-cols-2">
-                    <DrawerClose asChild>
-                      <Button size="lg" className="w-full bg-black text-white hover:bg-black/90">
-                        Confirmar envio
-                      </Button>
-                    </DrawerClose>
-                    <DrawerClose asChild>
-                      <Button size="lg" variant="outline" className="w-full">
-                        Cancelar
-                      </Button>
-                    </DrawerClose>
-                  </DrawerFooter>
-                </div>
-              </DrawerContent>
-            </Drawer>
-          ) : null}
-          {selectedCount > 0 ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={exportSelectedToCSV}
-                  className="gap-2"
-                >
-                  <IconDownload className="size-4" />
-                  Exportar CSV
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Exportar itens selecionados em CSV</TooltipContent>
-            </Tooltip>
-          ) : null}
+            </>
+          )}
           <div className="relative w-full sm:w-64">
             <IconSearch className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -450,6 +547,40 @@ export function ClusterUrlsTable({
               onChange={(event) => setInputValue(event.target.value)}
               className="pl-8"
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <IconHash
+                    className={cn(
+                      "size-4 transition-opacity",
+                      !deltaMode ? "opacity-100" : "opacity-40",
+                    )}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">Ordenar por valores absolutos</TooltipContent>
+            </Tooltip>
+            <Switch
+              checked={deltaMode}
+              onCheckedChange={setDeltaMode}
+              aria-label="Alternar entre valor absoluto e variação"
+              className="data-[state=checked]:bg-primary"
+            />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <IconTrendingUp
+                    className={cn(
+                      "size-4 transition-opacity",
+                      deltaMode ? "opacity-100" : "opacity-40",
+                    )}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">Ordenar por variação percentual</TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </div>

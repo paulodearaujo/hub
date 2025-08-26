@@ -35,10 +35,7 @@ export interface DeltaCalculations {
  * Calculate percentage change between two values
  * Returns 0 if previous is 0 or undefined
  */
-export function calculatePercentageChange(
-  current: number,
-  previous?: number,
-): number {
+export function calculatePercentageChange(current: number, previous?: number): number {
   if (!previous || previous === 0) return 0;
   return (current - previous) / previous;
 }
@@ -47,10 +44,7 @@ export function calculatePercentageChange(
  * Calculate position delta (improvement is previous - current)
  * Lower position is better, so improvement means current < previous
  */
-export function calculatePositionDelta(
-  current?: number,
-  previous?: number,
-): number {
+export function calculatePositionDelta(current?: number, previous?: number): number {
   if (!previous || previous === 0 || current === undefined) return 0;
   return previous - current;
 }
@@ -59,10 +53,7 @@ export function calculatePositionDelta(
  * Calculate CTR change in percentage points (not percentage change)
  * E.g., from 2% to 3% = +1 percentage point
  */
-export function calculateCtrPointsChange(
-  current?: number,
-  previous?: number,
-): number {
+export function calculateCtrPointsChange(current?: number, previous?: number): number {
   const cur = current ?? 0;
   const prev = previous ?? 0;
 
@@ -82,10 +73,7 @@ export function calculateCtrPointsChange(
  * Calculate previous value from current value and percentage change
  * Used to reverse-engineer previous metrics from current + delta percentage
  */
-export function calculatePreviousFromDeltaPct(
-  current: number,
-  deltaPct: number,
-): number {
+export function calculatePreviousFromDeltaPct(current: number, deltaPct: number): number {
   // Handle edge cases: -100% would divide by zero
   if (deltaPct <= -1) {
     return 0;
@@ -104,14 +92,8 @@ export function calculatePreviousCtr(
   impressionsDeltaPct?: number,
   clicksDeltaPct?: number,
 ): number {
-  const prevImpr = calculatePreviousFromDeltaPct(
-    currentImpressions,
-    impressionsDeltaPct ?? 0,
-  );
-  const prevClicks = calculatePreviousFromDeltaPct(
-    currentClicks,
-    clicksDeltaPct ?? 0,
-  );
+  const prevImpr = calculatePreviousFromDeltaPct(currentImpressions, impressionsDeltaPct ?? 0);
+  const prevClicks = calculatePreviousFromDeltaPct(currentClicks, clicksDeltaPct ?? 0);
   return prevImpr > 0 ? prevClicks / prevImpr : 0;
 }
 
@@ -124,20 +106,11 @@ export function calculateMetricDeltas(
   previous?: MetricValues,
 ): DeltaCalculations {
   return {
-    impressionsChange: calculatePercentageChange(
-      current.impressions,
-      previous?.impressions,
-    ),
+    impressionsChange: calculatePercentageChange(current.impressions, previous?.impressions),
     clicksChange: calculatePercentageChange(current.clicks, previous?.clicks),
-    conversionsChange: calculatePercentageChange(
-      current.conversions,
-      previous?.conversions,
-    ),
+    conversionsChange: calculatePercentageChange(current.conversions, previous?.conversions),
     ctrChange: calculateCtrPointsChange(current.ctr, previous?.ctr),
-    positionChange: calculatePositionDelta(
-      current.position,
-      previous?.position,
-    ),
+    positionChange: calculatePositionDelta(current.position, previous?.position),
   };
 }
 
@@ -145,9 +118,7 @@ export function calculateMetricDeltas(
  * Split weeks into early and late periods for comparison
  * Early period = first half, Late period = second half
  */
-export function splitWeeksPeriods(
-  weeks: string[],
-): { early: Set<string>; late: Set<string> } {
+export function splitWeeksPeriods(weeks: string[]): { early: Set<string>; late: Set<string> } {
   const sorted = [...weeks].sort((a, b) => a.localeCompare(b));
   const mid = Math.floor(sorted.length / 2);
   return {
@@ -173,9 +144,7 @@ export function aggregateMetrics(
   const result = data.reduce(
     (acc, item) => {
       // Skip if weekFilter is provided and week doesn't match
-      if (
-        weekFilter && (!item.week_ending || !weekFilter.has(item.week_ending))
-      ) {
+      if (weekFilter && (!item.week_ending || !weekFilter.has(item.week_ending))) {
         return acc;
       }
 
@@ -195,9 +164,7 @@ export function aggregateMetrics(
   );
 
   // Calculate weighted average position and CTR
-  const position = result.impressions > 0
-    ? result._posWeighted / result.impressions
-    : 0;
+  const position = result.impressions > 0 ? result._posWeighted / result.impressions : 0;
   const ctr = result.impressions > 0 ? result.clicks / result.impressions : 0;
 
   return {
@@ -249,9 +216,7 @@ export function calculateMetricsWithDeltas(
   }
 
   // Get unique weeks from delta data
-  const weeks = [
-    ...new Set(deltaData.map((d) => d.week_ending).filter(Boolean)),
-  ] as string[];
+  const weeks = [...new Set(deltaData.map((d) => d.week_ending).filter(Boolean))] as string[];
 
   // If only one week, no delta calculation possible
   if (weeks.length <= 1) {
@@ -287,17 +252,18 @@ export function calculateMetricsWithDeltas(
     ctr: totals.ctr,
     position: totals.position,
     previousPeriod: {
-      impressions: lateMetrics.impressions > 0
-        ? (totals.impressions * earlyMetrics.impressions) /
-          lateMetrics.impressions
-        : earlyMetrics.impressions,
-      clicks: lateMetrics.clicks > 0
-        ? (totals.clicks * earlyMetrics.clicks) / lateMetrics.clicks
-        : earlyMetrics.clicks,
-      conversions: lateMetrics.conversions > 0
-        ? (totals.conversions * earlyMetrics.conversions) /
-          lateMetrics.conversions
-        : earlyMetrics.conversions,
+      impressions:
+        lateMetrics.impressions > 0
+          ? (totals.impressions * earlyMetrics.impressions) / lateMetrics.impressions
+          : earlyMetrics.impressions,
+      clicks:
+        lateMetrics.clicks > 0
+          ? (totals.clicks * earlyMetrics.clicks) / lateMetrics.clicks
+          : earlyMetrics.clicks,
+      conversions:
+        lateMetrics.conversions > 0
+          ? (totals.conversions * earlyMetrics.conversions) / lateMetrics.conversions
+          : earlyMetrics.conversions,
       ctr: earlyMetrics.ctr,
       position: earlyMetrics.position,
     },

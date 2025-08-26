@@ -126,9 +126,15 @@ export default function ClusterLoading() {
                     <Skeleton className="h-6 w-32 inline-block" />
                   </h2>
                   <div className="flex items-center gap-2 ml-auto">
-                    {/* APENAS o input de busca - SEM contador, SEM botões! */}
+                    {/* Input de busca */}
                     <div className="relative w-full sm:w-64">
                       <Skeleton className="h-9 w-full sm:w-64" />
+                    </div>
+                    {/* Switch de ordenação */}
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-4 w-4" />
+                      <Skeleton className="h-6 w-11 rounded-full" />
+                      <Skeleton className="h-4 w-4" />
                     </div>
                   </div>
                 </div>
