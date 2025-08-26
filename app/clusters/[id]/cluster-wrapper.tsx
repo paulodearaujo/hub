@@ -1,8 +1,8 @@
 "use client";
 
-import type * as React from "react";
 import { SiteHeader } from "@/components/site-header";
 import { useNavigationState } from "@/hooks/use-navigation-state";
+import type * as React from "react";
 
 interface ClusterWrapperProps {
   availableWeeks: string[];

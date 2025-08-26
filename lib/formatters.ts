@@ -20,7 +20,10 @@ const isValid = (value: number | null | undefined): value is number => {
 const formatDecimal = (value: number, decimals: number): string => {
   const formatted = value.toFixed(decimals);
   // Remove trailing zeros after decimal point
-  const cleaned = formatted.replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "");
+  const cleaned = formatted.replace(/(\.\d*?[1-9])0+$/, "$1").replace(
+    /\.0+$/,
+    "",
+  );
   return toBrazilian(cleaned);
 };
 
@@ -104,7 +107,9 @@ export function formatWeekDisplay(weekEnding: string): string {
  * @example formatPercentageChange(15.367) => "+15,4%"
  * @example formatPercentageChange(-8.723) => "-8,7%"
  */
-export function formatPercentageChange(value: number | null | undefined): string {
+export function formatPercentageChange(
+  value: number | null | undefined,
+): string {
   if (!isValid(value) || value === 0) return "0%";
 
   const absValue = Math.abs(value);
@@ -120,7 +125,9 @@ export function formatPercentageChange(value: number | null | undefined): string
  * @example formatPercentagePoints(2.34) => "+2,3pp"
  * @example formatPercentagePoints(-1.56) => "-1,6pp"
  */
-export function formatPercentagePoints(value: number | null | undefined): string {
+export function formatPercentagePoints(
+  value: number | null | undefined,
+): string {
   if (!isValid(value) || value === 0) return "0pp";
 
   const absValue = Math.abs(value);
@@ -211,7 +218,10 @@ export function formatWeekEnding(date: string | null | undefined): string {
  * @param value - The percentage change value
  * @param threshold - The threshold for significance (default: 5%)
  */
-export function isSignificantChange(value: number | null | undefined, threshold = 5): boolean {
+export function isSignificantChange(
+  value: number | null | undefined,
+  threshold = 5,
+): boolean {
   if (!isValid(value)) return false;
   return Math.abs(value) >= threshold;
 }
@@ -220,13 +230,18 @@ export function isSignificantChange(value: number | null | undefined, threshold 
  * Get color class based on delta value
  * Used for consistent coloring across the app
  */
-export function getDeltaColorClass(value: number | null | undefined, inverted = false): string {
+export function getDeltaColorClass(
+  value: number | null | undefined,
+  inverted = false,
+): string {
   if (!isValid(value) || value === 0) {
     return "text-muted-foreground";
   }
 
   const isPositive = inverted ? value < 0 : value > 0;
-  return isPositive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400";
+  return isPositive
+    ? "text-green-600 dark:text-green-400"
+    : "text-red-600 dark:text-red-400";
 }
 
 /**
