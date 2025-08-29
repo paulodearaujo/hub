@@ -13,11 +13,14 @@ services:
       corepack prepare pnpm@latest --activate
       pnpm install --no-frozen-lockfile
       pnpm build
+      # Copiar arquivos estáticos e public para o diretório standalone
+      cp -r public .next/standalone/
+      cp -r .next/static .next/standalone/.next/
 
     startCommand: |
       corepack enable
       corepack prepare pnpm@latest --activate
-      pnpm start
+      pnpm start:standalone
 
     # Variáveis de ambiente
     envVars:
@@ -28,6 +31,10 @@ services:
       # Configuração de produção
       - key: NODE_ENV
         value: production
+
+      # Hostname para o servidor standalone escutar em todos os IPs
+      - key: HOSTNAME
+        value: "0.0.0.0"
 
       # Credenciais do Supabase (configurar via dashboard do Render)
       # sync: false significa que o valor deve ser configurado manualmente no dashboard
@@ -41,5 +48,5 @@ services:
       - key: DATABASE_URL
         sync: false
 
-    # Health check endpoint
-    healthCheckPath: /
+    # Health check endpoint - rota dedicada mais eficiente
+    healthCheckPath: /api/health

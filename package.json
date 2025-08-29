@@ -5,6 +5,7 @@
     "build": "next build",
     "build:analyze": "ANALYZE=true next build",
     "start": "next start",
+    "start:standalone": "node .next/standalone/server.js",
     "lint": "biome check --write .",
     "format": "biome format --write .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
