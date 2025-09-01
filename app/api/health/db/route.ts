@@ -11,11 +11,9 @@ export async function GET() {
     const supabase = await createClient();
 
     // Query simples e rápida apenas para verificar conectividade
-    const { error } = await supabase
-      .from("blog_articles_metrics")
-      .select("week")
-      .limit(1)
-      .single();
+    const { error } = await supabase.from("blog_articles_metrics").select(
+      "week",
+    ).limit(1).single();
 
     const responseTime = Date.now() - startTime;
 
