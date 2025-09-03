@@ -21,6 +21,7 @@
     "net"
   ],
   "[typescript]": {
-    "editor.defaultFormatter": "denoland.vscode-deno"
-  }
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "color-highlight.markerType": "dot-after"
 }

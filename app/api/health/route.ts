@@ -13,7 +13,7 @@ export async function GET() {
       },
       { status: 200 },
     );
-  } catch (error) {
+  } catch {
     // Em caso de erro inesperado
     return NextResponse.json(
       {

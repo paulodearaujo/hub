@@ -99,7 +99,12 @@ export function ClusterLeaderboardTable({
   // Helper function to get sort value based on delta mode
   const getSortValue = React.useCallback(
     (row: Row<ClusterData>, columnId: string): number => {
-      return getTableSortValue(row.original, columnId, deltaMode, (col) => row.getValue(col));
+      return getTableSortValue(
+        row.original as unknown as Record<string, unknown>,
+        columnId,
+        deltaMode,
+        (col) => row.getValue(col),
+      );
     },
     [deltaMode],
   );

@@ -16,7 +16,7 @@ import {
  * @param getValue - Optional function to get value from row (for TanStack Table compatibility)
  * @returns The numeric value to sort by
  */
-export function getTableSortValue<T extends Record<string, any>>(
+export function getTableSortValue<T extends Record<string, unknown>>(
   row: T,
   columnId: string,
   deltaMode: boolean,
@@ -30,27 +30,35 @@ export function getTableSortValue<T extends Record<string, any>>(
       if (typeof pp === "number") return pp;
 
       // Otherwise compute via calculatePreviousCtr
-      const ctr = row.gsc_ctr || 0;
-      const prevCtr = calculatePreviousCtr(
-        row.gsc_impressions,
-        row.gsc_clicks,
-        row.gsc_impressions_delta_pct,
-        row.gsc_clicks_delta_pct,
-      );
+      const impressions = Number(row.gsc_impressions);
+      const clicks = Number(row.gsc_clicks);
+      const ctr = Number(row.gsc_ctr);
+      const impDelta = Number(row.gsc_impressions_delta_pct);
+      const clkDelta = Number(row.gsc_clicks_delta_pct);
+      if (
+        !Number.isFinite(impressions) ||
+        !Number.isFinite(clicks) ||
+        !Number.isFinite(ctr) ||
+        !Number.isFinite(impDelta) ||
+        !Number.isFinite(clkDelta)
+      ) {
+        return Number.NaN;
+      }
+      const prevCtr = calculatePreviousCtr(impressions, clicks, impDelta, clkDelta);
       const change = calculateCtrPointsChange(ctr, prevCtr);
-      return Number.isFinite(change) ? change : 0;
+      return Number.isFinite(change) ? change : Number.NaN;
     }
 
     // Use the delta utility function for other fields
-    const deltaValue = getDeltaSortValue(row, columnId);
+    const deltaValue = getDeltaSortValue(row as Record<string, unknown>, columnId);
     if (deltaValue === null) {
-      const v = getValue ? getValue(columnId) : row[columnId];
-      return typeof v === "number" ? v : 0;
+      const v = getValue ? getValue(columnId) : (row as Record<string, unknown>)[columnId];
+      return typeof v === "number" ? v : Number(v);
     }
     return deltaValue;
   }
 
   // Use absolute value
-  const value = getValue ? getValue(columnId) : row[columnId];
-  return typeof value === "number" ? value : 0;
+  const value = getValue ? getValue(columnId) : (row as Record<string, unknown>)[columnId];
+  return typeof value === "number" ? value : Number(value);
 }

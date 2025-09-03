@@ -85,6 +85,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         >
           Pular para conteúdo
         </a>
+        {/* biome-ignore lint/correctness/useUniqueElementIds: Static id required as skip-link target */}
         <div id="main-content">{children}</div>
       </body>
     </html>

@@ -6,7 +6,6 @@ import { unstable_cache } from "next/cache";
 // Reuse TCP connections to Supabase (lower TTFB) when running in Node with Undici available.
 // Avoid static imports so bundlers don't require 'undici'.
 try {
-  // @ts-ignore - Next.js internal hook for Undici agent
   const maybeUndici = (
     globalThis as unknown as {
       fetch?: {
@@ -862,9 +861,9 @@ export async function getClusterUrlsMetrics(
       .select("url, name")
       .in("url", urlPage);
     const nameMap = new Map<string, string | null>();
-    (articles || []).forEach((a: { url: string; name: string | null }) =>
-      nameMap.set(a.url, a.name),
-    );
+    (articles || []).forEach((a: { url: string; name: string | null }) => {
+      nameMap.set(a.url, a.name);
+    });
     rows = rows.map((r) => ({ ...r, name: nameMap.get(r.url) ?? r.name }));
 
     // Enriquecer com métricas de clusterização por URL (distância, hierarquia)
@@ -884,12 +883,13 @@ export async function getClusterUrlsMetrics(
         distance: number | null;
         parent_id: number | null;
         parent_name: string | null;
-      }) =>
+      }) => {
         metaMap.set(c.url, {
           distance: c.distance ?? null,
           parent_id: c.parent_id ?? null,
           parent_name: c.parent_name ?? null,
-        }),
+        });
+      },
     );
     rows = rows.map((r) => ({ ...r, ...(metaMap.get(r.url) ?? {}) }));
   }

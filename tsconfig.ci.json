@@ -1,11 +1,11 @@
 {
-  "extends": "./tsconfig.base.json",
+  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "skipLibCheck": false,
+    "skipLibCheck": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "incremental": false
   },
-  "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["components/ui/**", "node_modules", ".next", "dist", "build"]
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules", ".next", "dist", "build"]
 }

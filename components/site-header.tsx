@@ -1,5 +1,8 @@
 "use client";
 
+import * as React from "react";
+import { IconCalendar, IconRefresh } from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -7,9 +10,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { formatWeekDisplay } from "@/lib/formatters";
-import { IconCalendar, IconRefresh } from "@tabler/icons-react";
-import { useRouter } from "next/navigation";
-import * as React from "react";
 
 interface SiteHeaderProps {
   availableWeeks?: string[];
@@ -34,6 +34,7 @@ export function SiteHeader({
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
   const [selectedWeeks, setSelectedWeeks] = React.useState<string[]>(currentWeeks);
+  const uid = React.useId();
 
   React.useEffect(() => {
     onNavigationStateChange?.(isPending);
@@ -109,7 +110,7 @@ export function SiteHeader({
                 {/* Select All */}
                 <div className="flex items-center space-x-2 p-2 mb-2 bg-muted/50 rounded-md hover:bg-muted transition-colors w-full cursor-pointer">
                   <Checkbox
-                    id="select-all"
+                    id={`${uid}-weeks-select-all`}
                     checked={
                       selectedWeeks.length === availableWeeks.length && availableWeeks.length > 0
                     }
@@ -118,7 +119,7 @@ export function SiteHeader({
                     }}
                   />
                   <label
-                    htmlFor="select-all"
+                    htmlFor={`${uid}-weeks-select-all`}
                     className="text-sm font-medium flex-1 select-none cursor-pointer"
                   >
                     Todas as semanas

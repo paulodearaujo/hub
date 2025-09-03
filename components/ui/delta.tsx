@@ -1,8 +1,8 @@
 "use client";
 
-import { IconTrendingDown, IconTrendingUp } from "@tabler/icons-react";
 import { formatPercentageChange } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { IconTrendingDown, IconTrendingUp } from "@tabler/icons-react";
 
 // Re-export calculation utilities from lib
 export {
@@ -13,10 +13,10 @@ export {
   calculatePositionDelta,
   calculatePreviousCtr,
   calculatePreviousFromDeltaPct,
-  type DeltaCalculations,
-  type MetricsWithDelta,
-  type MetricValues,
   splitWeeksPeriods,
+  type DeltaCalculations,
+  type MetricValues,
+  type MetricsWithDelta,
 } from "@/lib/delta-calculations";
 
 // ============================================================================
@@ -42,10 +42,13 @@ export function Delta({
   variant = "percent",
   precision = 1,
   className,
-  hideIfZero = true,
+  // Keep API but unused in current visual spec
+  hideIfZero: _hideIfZero = true,
   positiveIcon = "up",
   suffix,
 }: DeltaProps) {
+  // Mark as intentionally unused while preserving API compatibility
+  void _hideIfZero;
   if (value === undefined || value === null) return null;
   const num = Number(value);
 
@@ -79,8 +82,6 @@ export function Delta({
   const absValue = Math.abs(displayValue);
 
   // Para valores absolutos, verificar se é inteiro após arredondar para a precisão desejada
-  const roundedValue = Math.round(absValue * Math.pow(10, precision)) / Math.pow(10, precision);
-  const isInteger = Number.isInteger(roundedValue);
 
   // Helper function to format with decimal places and remove trailing zeros
   const formatDeltaValue = (value: number, decimals: number): string => {
