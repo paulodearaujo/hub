@@ -1,6 +1,7 @@
 import { SectionCards } from "@/app/components/section-cards";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { WeeklyMetricsChart } from "@/components/weekly-metrics-chart";
 import {
   getAvailableWeeks,
   getClusterInfo,
@@ -16,9 +17,7 @@ import dynamic from "next/dynamic";
 import { ClusterHeader } from "../components/cluster-header";
 import { ClusterWrapper } from "./cluster-wrapper";
 
-const WeeklyMetricsChart = dynamic(() =>
-  import("@/components/weekly-metrics-chart.client").then((m) => ({ default: m.default })),
-);
+// Chart is a Client Component; static import avoids `ssr:false` restriction in Server Components.
 
 const ClusterUrlsTable = dynamic(() =>
   import("../components/cluster-urls-table").then((m) => ({ default: m.ClusterUrlsTable })),

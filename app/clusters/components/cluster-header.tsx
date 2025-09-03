@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { IconArrowLeft } from "@tabler/icons-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export function ClusterHeader({
   name,
@@ -22,10 +23,21 @@ export function ClusterHeader({
   };
   backHref?: string;
 }) {
+  const router = useRouter();
   return (
     <div className="flex flex-col gap-3 px-4 lg:px-6 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-3 min-w-0">
-        <Link href={backHref} className="text-muted-foreground hover:text-foreground">
+        <Link
+          href={backHref}
+          prefetch
+          aria-label="Voltar"
+          className="text-muted-foreground hover:text-foreground"
+          onMouseEnter={() => {
+            try {
+              router.prefetch(backHref);
+            } catch {}
+          }}
+        >
           <IconArrowLeft className="size-4" />
         </Link>
         <div className="flex flex-col min-w-0">

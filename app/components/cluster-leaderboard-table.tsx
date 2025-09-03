@@ -155,6 +155,13 @@ export function ClusterLeaderboardTable({
           <div className="font-medium truncate">
             <Link
               href={`/clusters/${row.original.cluster_id}${weeksParam}`}
+              prefetch
+              onMouseEnter={() => {
+                try {
+                  const href = `/clusters/${row.original.cluster_id}${weeksParam}`;
+                  router.prefetch(href);
+                } catch {}
+              }}
               className="hover:underline cursor-pointer truncate block"
             >
               {row.original.cluster_name || `Cluster ${row.original.cluster_id}`}
@@ -292,7 +299,7 @@ export function ClusterLeaderboardTable({
       // CTR: importado/derivado mas não exibido no momento
       // Coerência removida do leaderboard atual (mantida apenas no back)
     ],
-    [weeksParam, SortableHeader, getSortValue],
+    [weeksParam, SortableHeader, getSortValue, router],
   );
 
   const table = useReactTable({

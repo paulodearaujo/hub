@@ -1,8 +1,7 @@
-import type { Metadata } from "next";
-import dynamic from "next/dynamic";
 import { SectionCards } from "@/app/components/section-cards";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { WeeklyMetricsChart } from "@/components/weekly-metrics-chart";
 import {
   getAvailableWeeks,
   getClusterLeaderboard,
@@ -12,6 +11,8 @@ import {
 } from "@/lib/data/metrics-queries";
 import type { Tables } from "@/lib/database.types";
 import { calculateMetricsWithDeltas } from "@/lib/delta-calculations";
+import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 
 import { DashboardWrapper } from "./dashboard-wrapper";
 
@@ -20,10 +21,6 @@ export const metadata: Metadata = {
   description: "Análise de performance e agrupamento de conteúdo do blog.",
   alternates: { canonical: "/" },
 };
-
-const WeeklyMetricsChart = dynamic(() =>
-  import("@/components/weekly-metrics-chart.client").then((m) => ({ default: m.default })),
-);
 
 const ClusterLeaderboardTable = dynamic(() =>
   import("./components/cluster-leaderboard-table").then((m) => ({

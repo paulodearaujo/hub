@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import type { ChartConfig } from "@/components/ui/chart";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { Tables } from "@/lib/database.types";
 import { formatCtr, formatNumber, formatPosition } from "@/lib/formatters";
@@ -50,6 +51,22 @@ export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetr
     "gsc_clicks",
     "gsc_position",
   ]);
+
+  // Internal ready state to control skeleton overlay precisely
+  const [ready, setReady] = React.useState(false);
+  React.useEffect(() => {
+    let raf1 = 0;
+    let raf2 = 0;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        setReady(true);
+      });
+    });
+    return () => {
+      if (raf1) cancelAnimationFrame(raf1);
+      if (raf2) cancelAnimationFrame(raf2);
+    };
+  }, []);
 
   const filteredData = React.useMemo<WeeklyMetric[]>(() => {
     if (!data || data.length === 0) return [];
@@ -222,150 +239,160 @@ export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetr
         </CardAction>
       </CardHeader>
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
-        <ChartContainer config={chartConfig} className="aspect-auto h-[220px] sm:h-[250px] w-full">
-          <LineChart data={chartData}>
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="week_ending"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              minTickGap={32}
-              tickFormatter={(value: string) => {
-                // Show week ending date to emphasize "semana por semana"
-                const [y, m, d] = (value || "").split("-");
-                if (!y || !m || !d) return value;
-                return `Sem ${d}/${m}`;
-              }}
-            />
-            {/* Single Y-axis for all metrics */}
-            <YAxis tickLine={false} axisLine={false} tickMargin={8} domain={[0, 100]} />
-            <ChartTooltip
-              cursor={false}
-              content={
-                <ChartTooltipContent
-                  labelFormatter={(value: string) => {
-                    const [y, m, d] = (value || "").split("-");
-                    if (!y || !m || !d) return value;
-                    const endLabel = `Semana ${d}/${m}/${y}`;
-                    if (selectedWeeks.length === 1) {
-                      return `${endLabel}${value === selectedWeeks[0] ? " (Atual)" : " (Anterior)"}`;
-                    }
-                    return endLabel;
-                  }}
-                  formatter={(value, name, item) => {
-                    // Skip null values
-                    if (value === null || value === undefined) return null;
+        <div className="relative">
+          {!ready && (
+            <div className="absolute inset-0 z-10">
+              <Skeleton className="h-[220px] sm:h-[250px] w-full" />
+            </div>
+          )}
+          <ChartContainer
+            config={chartConfig}
+            className="aspect-auto h-[220px] sm:h-[250px] w-full"
+          >
+            <LineChart data={chartData}>
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="week_ending"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                minTickGap={32}
+                tickFormatter={(value: string) => {
+                  // Show week ending date to emphasize "semana por semana"
+                  const [y, m, d] = (value || "").split("-");
+                  if (!y || !m || !d) return value;
+                  return `Sem ${d}/${m}`;
+                }}
+              />
+              {/* Single Y-axis for all metrics */}
+              <YAxis tickLine={false} axisLine={false} tickMargin={8} domain={[0, 100]} />
+              <ChartTooltip
+                cursor={false}
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={(value: string) => {
+                      const [y, m, d] = (value || "").split("-");
+                      if (!y || !m || !d) return value;
+                      const endLabel = `Semana ${d}/${m}/${y}`;
+                      if (selectedWeeks.length === 1) {
+                        return `${endLabel}${value === selectedWeeks[0] ? " (Atual)" : " (Anterior)"}`;
+                      }
+                      return endLabel;
+                    }}
+                    formatter={(value, name, item) => {
+                      // Skip null values
+                      if (value === null || value === undefined) return null;
 
-                    const config = chartConfig[name as keyof typeof chartConfig];
-                    const label = config?.label || name;
-                    const color = item?.color || config?.color;
+                      const config = chartConfig[name as keyof typeof chartConfig];
+                      const label = config?.label || name;
+                      const color = item?.color || config?.color;
 
-                    // Mostrar sempre os valores absolutos no tooltip
-                    let formattedValue = "";
-                    const baseKey = (name as string).replace(/_n$/, "");
-                    const original = item?.payload?.[baseKey as keyof typeof item.payload] as
-                      | number
-                      | undefined;
-                    if ((name as string).startsWith("gsc_position")) {
-                      const n = Number(original ?? 0);
-                      formattedValue = formatPosition(n);
-                    } else if ((name as string).startsWith("gsc_ctr")) {
-                      const n = Number(original ?? 0);
-                      formattedValue = formatCtr(n);
-                    } else {
-                      const n = Number(original ?? 0);
-                      formattedValue = formatNumber(n);
-                    }
+                      // Mostrar sempre os valores absolutos no tooltip
+                      let formattedValue = "";
+                      const baseKey = (name as string).replace(/_n$/, "");
+                      const original = item?.payload?.[baseKey as keyof typeof item.payload] as
+                        | number
+                        | undefined;
+                      if ((name as string).startsWith("gsc_position")) {
+                        const n = Number(original ?? 0);
+                        formattedValue = formatPosition(n);
+                      } else if ((name as string).startsWith("gsc_ctr")) {
+                        const n = Number(original ?? 0);
+                        formattedValue = formatCtr(n);
+                      } else {
+                        const n = Number(original ?? 0);
+                        formattedValue = formatNumber(n);
+                      }
 
-                    // Return JSX with colored dot, label and value
-                    return (
-                      <>
-                        <div
-                          className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
-                          style={{ backgroundColor: color }}
-                        />
-                        <div className="flex flex-1 justify-between items-center gap-2">
-                          <span className="text-muted-foreground">{label}</span>
-                          <span className="font-mono font-medium tabular-nums text-foreground">
-                            {formattedValue}
-                          </span>
-                        </div>
-                      </>
-                    );
-                  }}
-                  indicator="dot"
-                />
-              }
-            />
-            {/* Render all lines with stable order; toggle via `hide` and remount the specific line using key */}
-            <Line
-              key={`amplitude_conversions-${selectedMetrics.includes("amplitude_conversions") ? "on" : "off"}`}
-              dataKey="amplitude_conversions_n"
-              name="amplitude_conversions"
-              type="monotone"
-              stroke="var(--color-amplitude_conversions)"
-              strokeWidth={2}
-              dot={false}
-              connectNulls={false}
-              hide={!selectedMetrics.includes("amplitude_conversions")}
-              isAnimationActive={selectedMetrics.includes("amplitude_conversions")}
-              animationDuration={350}
-            />
-            <Line
-              key={`gsc_impressions-${selectedMetrics.includes("gsc_impressions") ? "on" : "off"}`}
-              dataKey="gsc_impressions_n"
-              name="gsc_impressions"
-              type="monotone"
-              stroke="var(--color-gsc_impressions)"
-              strokeWidth={2}
-              dot={false}
-              connectNulls={false}
-              hide={!selectedMetrics.includes("gsc_impressions")}
-              isAnimationActive={selectedMetrics.includes("gsc_impressions")}
-              animationDuration={350}
-            />
-            <Line
-              key={`gsc_ctr-${selectedMetrics.includes("gsc_ctr") ? "on" : "off"}`}
-              dataKey="gsc_ctr_n"
-              name="gsc_ctr"
-              type="monotone"
-              stroke="var(--color-gsc_ctr)"
-              strokeWidth={2}
-              dot={false}
-              connectNulls={false}
-              hide={!selectedMetrics.includes("gsc_ctr")}
-              isAnimationActive={selectedMetrics.includes("gsc_ctr")}
-              animationDuration={350}
-            />
-            <Line
-              key={`gsc_clicks-${selectedMetrics.includes("gsc_clicks") ? "on" : "off"}`}
-              dataKey="gsc_clicks_n"
-              name="gsc_clicks"
-              type="monotone"
-              stroke="var(--color-gsc_clicks)"
-              strokeWidth={2}
-              dot={false}
-              connectNulls={false}
-              hide={!selectedMetrics.includes("gsc_clicks")}
-              isAnimationActive={selectedMetrics.includes("gsc_clicks")}
-              animationDuration={350}
-            />
-            <Line
-              key={`gsc_position-${selectedMetrics.includes("gsc_position") ? "on" : "off"}`}
-              dataKey="gsc_position_n"
-              name="gsc_position"
-              type="monotone"
-              stroke="var(--color-gsc_position)"
-              strokeWidth={2}
-              dot={false}
-              connectNulls={false}
-              hide={!selectedMetrics.includes("gsc_position")}
-              isAnimationActive={selectedMetrics.includes("gsc_position")}
-              animationDuration={350}
-            />
-          </LineChart>
-        </ChartContainer>
+                      // Return JSX with colored dot, label and value
+                      return (
+                        <>
+                          <div
+                            className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+                            style={{ backgroundColor: color }}
+                          />
+                          <div className="flex flex-1 justify-between items-center gap-2">
+                            <span className="text-muted-foreground">{label}</span>
+                            <span className="font-mono font-medium tabular-nums text-foreground">
+                              {formattedValue}
+                            </span>
+                          </div>
+                        </>
+                      );
+                    }}
+                    indicator="dot"
+                  />
+                }
+              />
+              {/* Render all lines with stable order; toggle via `hide` and remount the specific line using key */}
+              <Line
+                key={`amplitude_conversions-${selectedMetrics.includes("amplitude_conversions") ? "on" : "off"}`}
+                dataKey="amplitude_conversions_n"
+                name="amplitude_conversions"
+                type="monotone"
+                stroke="var(--color-amplitude_conversions)"
+                strokeWidth={2}
+                dot={false}
+                connectNulls={false}
+                hide={!selectedMetrics.includes("amplitude_conversions")}
+                isAnimationActive={selectedMetrics.includes("amplitude_conversions")}
+                animationDuration={350}
+              />
+              <Line
+                key={`gsc_impressions-${selectedMetrics.includes("gsc_impressions") ? "on" : "off"}`}
+                dataKey="gsc_impressions_n"
+                name="gsc_impressions"
+                type="monotone"
+                stroke="var(--color-gsc_impressions)"
+                strokeWidth={2}
+                dot={false}
+                connectNulls={false}
+                hide={!selectedMetrics.includes("gsc_impressions")}
+                isAnimationActive={selectedMetrics.includes("gsc_impressions")}
+                animationDuration={350}
+              />
+              <Line
+                key={`gsc_ctr-${selectedMetrics.includes("gsc_ctr") ? "on" : "off"}`}
+                dataKey="gsc_ctr_n"
+                name="gsc_ctr"
+                type="monotone"
+                stroke="var(--color-gsc_ctr)"
+                strokeWidth={2}
+                dot={false}
+                connectNulls={false}
+                hide={!selectedMetrics.includes("gsc_ctr")}
+                isAnimationActive={selectedMetrics.includes("gsc_ctr")}
+                animationDuration={350}
+              />
+              <Line
+                key={`gsc_clicks-${selectedMetrics.includes("gsc_clicks") ? "on" : "off"}`}
+                dataKey="gsc_clicks_n"
+                name="gsc_clicks"
+                type="monotone"
+                stroke="var(--color-gsc_clicks)"
+                strokeWidth={2}
+                dot={false}
+                connectNulls={false}
+                hide={!selectedMetrics.includes("gsc_clicks")}
+                isAnimationActive={selectedMetrics.includes("gsc_clicks")}
+                animationDuration={350}
+              />
+              <Line
+                key={`gsc_position-${selectedMetrics.includes("gsc_position") ? "on" : "off"}`}
+                dataKey="gsc_position_n"
+                name="gsc_position"
+                type="monotone"
+                stroke="var(--color-gsc_position)"
+                strokeWidth={2}
+                dot={false}
+                connectNulls={false}
+                hide={!selectedMetrics.includes("gsc_position")}
+                isAnimationActive={selectedMetrics.includes("gsc_position")}
+                animationDuration={350}
+              />
+            </LineChart>
+          </ChartContainer>
+        </div>
       </CardContent>
     </Card>
   );
