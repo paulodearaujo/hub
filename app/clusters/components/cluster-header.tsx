@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatQualityPercent } from "@/lib/formatters";
 import { IconArrowLeft } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -55,7 +56,8 @@ export function ClusterHeader({
         <Tooltip>
           <TooltipTrigger asChild>
             <Badge variant="secondary">
-              Coerência {meta.coherence === undefined ? "—" : meta.coherence.toFixed(2)}
+              Coerência{" "}
+              {meta.coherence === undefined ? "—" : formatQualityPercent(meta.coherence, 2)}
             </Badge>
           </TooltipTrigger>
           <TooltipContent>Força média de similaridade interna do cluster (0-1).</TooltipContent>
@@ -63,7 +65,7 @@ export function ClusterHeader({
         <Tooltip>
           <TooltipTrigger asChild>
             <Badge variant="secondary">
-              Densidade {meta.density === undefined ? "—" : meta.density.toFixed(2)}
+              Densidade {meta.density === undefined ? "—" : formatQualityPercent(meta.density, 2)}
             </Badge>
           </TooltipTrigger>
           <TooltipContent>Quão conectados estão os itens entre si (0-1).</TooltipContent>
@@ -71,7 +73,8 @@ export function ClusterHeader({
         <Tooltip>
           <TooltipTrigger asChild>
             <Badge variant="secondary">
-              Sim. Média {meta.avgSimilarity === undefined ? "—" : meta.avgSimilarity.toFixed(2)}
+              Sim. Média{" "}
+              {meta.avgSimilarity === undefined ? "—" : formatQualityPercent(meta.avgSimilarity, 2)}
             </Badge>
           </TooltipTrigger>
           <TooltipContent>Similaridade média entre os pares do cluster (0-1).</TooltipContent>
@@ -79,7 +82,8 @@ export function ClusterHeader({
         <Tooltip>
           <TooltipTrigger asChild>
             <Badge variant="secondary">
-              Sim. Mín. {meta.minSimilarity === undefined ? "—" : meta.minSimilarity.toFixed(2)}
+              Sim. Mín.{" "}
+              {meta.minSimilarity === undefined ? "—" : formatQualityPercent(meta.minSimilarity, 2)}
             </Badge>
           </TooltipTrigger>
           <TooltipContent>Menor similaridade observada no cluster (0-1).</TooltipContent>

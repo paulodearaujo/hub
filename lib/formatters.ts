@@ -283,3 +283,18 @@ export const formatters = {
 
 // Type-safe formatter selector
 export type FormatterType = keyof typeof formatters;
+
+// Extra helpers for cluster quality metrics near 1.0
+export function formatQualityPercent(value: number | null | undefined, digits = 3): string {
+  if (!isValid(value)) return "—";
+  // Convert to % and clamp to just below 100 if value < 1 to avoid rounding to 100.00%
+  const pct = value * 100;
+  const clamped = value < 1 ? Math.min(pct, 99.9999) : pct;
+  return `${formatDecimal(clamped, digits)}%`;
+}
+
+export function formatQualityGapBp(value: number | null | undefined, digits = 1): string {
+  if (!isValid(value)) return "—";
+  const gapBp = (1 - value) * 10000; // basis points
+  return `${formatDecimal(gapBp, digits)} bp`;
+}

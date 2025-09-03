@@ -638,7 +638,7 @@ export async function getClusterInfo(runId: string, clusterId: number) {
   const { data: metric } = await supabase
     .from("blog_cluster_metrics")
     .select(
-      "cluster_id, cluster_size, cluster_coherence, cluster_density, avg_similarity, min_similarity",
+      "cluster_id, cluster_size, cluster_coherence, cluster_density, avg_similarity, min_similarity, pillar_candidate_url, pillar_similarity_score, cluster_variance",
     )
     .eq("run_id", runId)
     .eq("cluster_id", clusterId)
@@ -668,6 +668,9 @@ export async function getClusterInfo(runId: string, clusterId: number) {
     cluster_density: metric?.cluster_density,
     avg_similarity: metric?.avg_similarity,
     min_similarity: metric?.min_similarity,
+    pillar_candidate_url: metric?.pillar_candidate_url,
+    pillar_similarity_score: metric?.pillar_similarity_score,
+    cluster_variance: metric?.cluster_variance,
     urls,
   };
 }

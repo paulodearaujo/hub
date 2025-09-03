@@ -17,8 +17,6 @@ import dynamic from "next/dynamic";
 import { ClusterHeader } from "../components/cluster-header";
 import { ClusterWrapper } from "./cluster-wrapper";
 
-// Chart is a Client Component; static import avoids `ssr:false` restriction in Server Components.
-
 const ClusterUrlsTable = dynamic(() =>
   import("../components/cluster-urls-table").then((m) => ({ default: m.ClusterUrlsTable })),
 );
@@ -113,31 +111,14 @@ export default async function Page({ params, searchParams }: PageProps) {
                 }}
                 backHref={`/${selectedWeeks.length ? `?weeks=${selectedWeeks.join(",")}` : ""}`}
               />
-              <CardsSection clusterId={clusterId} selectedWeeks={selectedWeeks} />
+              <CardsSection runId={runId} clusterId={clusterId} selectedWeeks={selectedWeeks} />
               <ChartAndUrls
+                runId={runId}
                 clusterId={clusterId}
                 selectedWeeks={selectedWeeks}
                 clusterName={info?.cluster_name || `Cluster ${id}`}
-                clusterMeta={{
-                  id: clusterId,
-                  size: info?.cluster_size || 0,
-                  coherence:
-                    info && info.cluster_coherence !== null && info.cluster_coherence !== undefined
-                      ? info.cluster_coherence
-                      : undefined,
-                  density:
-                    info && info.cluster_density !== null && info.cluster_density !== undefined
-                      ? info.cluster_density
-                      : undefined,
-                  avgSimilarity:
-                    info && info.avg_similarity !== null && info.avg_similarity !== undefined
-                      ? info.avg_similarity
-                      : undefined,
-                  minSimilarity:
-                    info && info.min_similarity !== null && info.min_similarity !== undefined
-                      ? info.min_similarity
-                      : undefined,
-                }}
+                pillarUrl={info?.pillar_candidate_url || null}
+                pillarScore={info?.pillar_similarity_score ?? null}
               />
             </div>
           </div>
@@ -148,13 +129,14 @@ export default async function Page({ params, searchParams }: PageProps) {
 }
 
 async function CardsSection({
+  runId,
   clusterId,
   selectedWeeks,
 }: {
+  runId: string;
   clusterId: number;
   selectedWeeks: string[];
 }) {
-  const runId = await getLatestRunId();
   if (!runId) return null;
 
   // Base period totals
@@ -180,24 +162,20 @@ async function CardsSection({
 }
 
 async function ChartAndUrls({
+  runId,
   clusterId,
   selectedWeeks,
   clusterName,
-  clusterMeta,
+  pillarUrl,
+  pillarScore,
 }: {
+  runId: string;
   clusterId: number;
   selectedWeeks: string[];
   clusterName: string;
-  clusterMeta: {
-    id: number;
-    size: number;
-    coherence?: number | undefined;
-    density?: number | undefined;
-    avgSimilarity?: number | undefined;
-    minSimilarity?: number | undefined;
-  };
+  pillarUrl: string | null;
+  pillarScore: number | null;
 }) {
-  const runId = await getLatestRunId();
   if (!runId) return null;
   const [weekly, urls] = await Promise.all([
     // Chart: include previous week when only one is selected (for WoW visualization)
@@ -226,7 +204,8 @@ async function ChartAndUrls({
         data={urls}
         clusterName={clusterName}
         selectedWeeks={selectedWeeks}
-        clusterMeta={clusterMeta}
+        pillarUrl={pillarUrl}
+        pillarScore={pillarScore}
       />
     </>
   );

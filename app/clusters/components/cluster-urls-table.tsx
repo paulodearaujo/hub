@@ -36,6 +36,7 @@ import {
   IconHash,
   IconPencil,
   IconSearch,
+  IconStar,
   IconTrendingUp,
 } from "@tabler/icons-react";
 import type {
@@ -59,8 +60,8 @@ import * as React from "react";
 
 // Helper: width/alignment classes per column id (simpler & DRY)
 const COLUMN_CLASS: Record<string, string> = {
-  select: "text-left w-[44px] px-4",
-  name: "text-left w-[35%] px-4",
+  select: "text-left w-[44px] pl-2 pr-0 overflow-visible",
+  name: "text-left w-[35%] px-4 overflow-visible",
   amplitude_conversions: "text-right w-[13%] px-4",
   gsc_impressions: "text-right w-[13%] px-4",
   gsc_ctr: "text-right w-[13%] px-4",
@@ -136,14 +137,8 @@ function sanitizeForFilename(s: string): string {
 // Create columns with deltaMode parameter
 function createColumns(
   deltaMode: boolean,
-  clusterMeta?: {
-    id: number;
-    size: number;
-    coherence?: number | undefined;
-    density?: number | undefined;
-    avgSimilarity?: number | undefined;
-    minSimilarity?: number | undefined;
-  },
+  pillarUrl?: string | null,
+  pillarScore?: number | null,
 ): ColumnDef<ClusterUrlAggregates>[] {
   // Helper function to get sort value based on delta mode
   const getSortValue = (row: Row<ClusterUrlAggregates>, columnId: string): number => {
@@ -182,20 +177,26 @@ function createColumns(
     {
       id: "select",
       header: ({ table }: { table: ReactTableType<ClusterUrlAggregates> }) => (
-        <Checkbox
-          checked={table.getIsAllRowsSelected()}
-          onCheckedChange={(value) => table.toggleAllRowsSelected(!!value)}
-          aria-checked={table.getIsSomeRowsSelected() ? "mixed" : table.getIsAllRowsSelected()}
-          aria-label="Selecionar todas as linhas"
-        />
+        <div className="flex items-center gap-1.5">
+          <Checkbox
+            checked={table.getIsAllRowsSelected()}
+            onCheckedChange={(value) => table.toggleAllRowsSelected(!!value)}
+            aria-checked={table.getIsSomeRowsSelected() ? "mixed" : table.getIsAllRowsSelected()}
+            aria-label="Selecionar todas as linhas"
+          />
+        </div>
       ),
-      cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Selecionar linha"
-        />
-      ),
+      cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => {
+        return (
+          <div className="flex items-center gap-1.5">
+            <Checkbox
+              checked={row.getIsSelected()}
+              onCheckedChange={(value) => row.toggleSelected(!!value)}
+              aria-label="Selecionar linha"
+            />
+          </div>
+        );
+      },
       enableSorting: false,
       enableHiding: false,
     },
@@ -207,26 +208,47 @@ function createColumns(
         const url = o.url;
         const title = o.name || url;
 
+        const isPillar =
+          typeof pillarUrl === "string" && pillarUrl.length > 0 ? url === pillarUrl : false;
         const tooltip = (
           <div className="max-w-[80vw]">
             <div className="font-medium mb-1 break-words">{title}</div>
             <div className="opacity-80 break-all text-xs mb-2">{url}</div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-              {/* Per-URL clustering attributes only */}
               <div className="text-primary-foreground/90">Distância</div>
               <div className="text-right font-medium text-primary-foreground">
                 {typeof o.distance === "number" ? formatPosition(o.distance) : "—"}
               </div>
-              <div className="text-primary-foreground/90">Pai</div>
-              <div className="text-right font-medium text-primary-foreground">
-                {o.parent_name || (typeof o.parent_id === "number" ? `#${o.parent_id}` : "—")}
-              </div>
+              {isPillar && typeof pillarScore === "number" && (
+                <>
+                  <div className="text-primary-foreground/90">Score do Pilar</div>
+                  <div className="text-right font-medium text-primary-foreground">
+                    {(pillarScore * 100).toFixed(2).replace(".", ",")}%
+                  </div>
+                </>
+              )}
             </div>
           </div>
         );
 
         return (
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="relative flex items-center gap-2 min-w-0">
+            {isPillar ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className="absolute -left-5 z-10 inline-flex items-center"
+                    role="img"
+                    aria-hidden="true"
+                  >
+                    <IconStar className="size-3.5 text-yellow-500 shrink-0" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={6} className="max-w-[80vw]">
+                  Pilar do cluster — referência central de conteúdo.
+                </TooltipContent>
+              </Tooltip>
+            ) : null}
             <Tooltip>
               <TooltipTrigger asChild>
                 <a
@@ -390,19 +412,14 @@ export function ClusterUrlsTable({
   data = [] as ClusterUrlAggregates[],
   clusterName,
   selectedWeeks,
-  clusterMeta,
+  pillarUrl,
+  pillarScore,
 }: {
   data?: ClusterUrlAggregates[];
   clusterName?: string;
   selectedWeeks?: string[];
-  clusterMeta?: {
-    id: number;
-    size: number;
-    coherence?: number | undefined;
-    density?: number | undefined;
-    avgSimilarity?: number | undefined;
-    minSimilarity?: number | undefined;
-  };
+  pillarUrl?: string | null;
+  pillarScore?: number | null;
 }) {
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "amplitude_conversions", desc: true },
@@ -419,8 +436,8 @@ export function ClusterUrlsTable({
 
   // Create columns with current deltaMode
   const columns = React.useMemo(
-    () => createColumns(deltaMode, clusterMeta),
-    [deltaMode, clusterMeta],
+    () => createColumns(deltaMode, pillarUrl, pillarScore ?? null),
+    [deltaMode, pillarUrl, pillarScore],
   );
 
   const table = useReactTable({
@@ -461,18 +478,11 @@ export function ClusterUrlsTable({
       const url = o.url as string;
       const conversions = o.amplitude_conversions ?? 0;
       const impressions = o.gsc_impressions ?? 0;
-      const ctr = formatCtr(o.gsc_ctr);
+      // CSV: export CTR as numeric text (no % symbol) to avoid double percent and parsing issues
+      const ctr = formatCtr(o.gsc_ctr).replace("%", "");
       const clicks = o.gsc_clicks ?? 0;
       const position = formatPosition(o.gsc_position);
-      return [
-        title,
-        url,
-        String(conversions),
-        String(impressions),
-        `${ctr}%`,
-        String(clicks),
-        position,
-      ];
+      return [title, url, String(conversions), String(impressions), ctr, String(clicks), position];
     });
     const lines = [header, ...records].map((cols) => cols.map(escapeCSV).join(","));
     const csv = `\uFEFF${lines.join("\r\n")}`; // BOM for Excel compatibility
