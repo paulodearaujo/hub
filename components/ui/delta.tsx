@@ -12,7 +12,11 @@ export {
   calculatePercentageChange,
   calculatePositionDelta,
   calculatePreviousCtr,
-  calculatePreviousFromDeltaPct, splitWeeksPeriods, type DeltaCalculations, type MetricValues, type MetricsWithDelta
+  calculatePreviousFromDeltaPct,
+  splitWeeksPeriods,
+  type DeltaCalculations,
+  type MetricValues,
+  type MetricsWithDelta,
 } from "@/lib/delta-calculations";
 
 // ============================================================================

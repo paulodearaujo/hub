@@ -38,7 +38,7 @@ try {
 
 // Type aliases dos tipos existentes
 type BlogArticlesMetrics = Tables<"blog_articles_metrics">;
-type BlogClusterMetrics = Tables<"blog_cluster_metrics">;
+// type BlogClusterMetrics = Tables<"blog_cluster_metrics">;
 // Small helpers to keep aggregation and deltas DRY
 type Accumulator = {
   clicks: number;
@@ -281,7 +281,7 @@ export async function getLatestRunId() {
       return data?.run_id as string | null;
     },
     ["data:getLatestRunId", devBypass],
-    { revalidate: WEEKLY_REVALIDATE_SECONDS },
+    { revalidate: WEEKLY_REVALIDATE_SECONDS, tags: ["metrics"] },
   )();
 }
 
@@ -304,7 +304,7 @@ export async function getRunMetadata(runId: string) {
       };
     },
     ["data:getRunMetadata", runId, devBypass],
-    { revalidate: WEEKLY_REVALIDATE_SECONDS },
+    { revalidate: WEEKLY_REVALIDATE_SECONDS, tags: ["metrics"] },
   )();
 }
 
@@ -346,7 +346,9 @@ export async function getClusterMetrics(runId: string) {
 
   const { data, error } = await supabase
     .from("blog_cluster_metrics")
-    .select("*")
+    .select(
+      "cluster_id, cluster_size, cluster_coherence, cluster_density, avg_similarity, min_similarity",
+    )
     .eq("run_id", runId)
     .order("cluster_size", { ascending: false });
 
@@ -392,7 +394,7 @@ export async function getAvailableWeeks() {
       return weeksArray as string[];
     },
     ["data:getAvailableWeeks", version, devBypass],
-    { revalidate: DAILY_REVALIDATE_SECONDS },
+    { revalidate: DAILY_REVALIDATE_SECONDS, tags: ["metrics"] },
   )();
 }
 
@@ -406,7 +408,7 @@ export async function getWeeklyMetrics(selectedWeeks?: string[]) {
       return aggregateWeekly(allData);
     },
     ["data:getWeeklyMetrics", weeksKey, version, devBypass],
-    { revalidate: WEEKLY_REVALIDATE_SECONDS },
+    { revalidate: WEEKLY_REVALIDATE_SECONDS, tags: ["metrics"] },
   )();
 }
 
@@ -419,7 +421,12 @@ export async function getClusterLeaderboard(runId: string, selectedWeeks?: strin
     async () => {
       const supabase = createPublicClient();
       const [{ data: clusterMetrics }, clusters] = await Promise.all([
-        supabase.from("blog_cluster_metrics").select("*").eq("run_id", runId),
+        supabase
+          .from("blog_cluster_metrics")
+          .select(
+            "cluster_id, cluster_size, cluster_coherence, cluster_density, avg_similarity, min_similarity",
+          )
+          .eq("run_id", runId),
         (async () => {
           // Read ALL cluster rows for the run (Supabase returns max 1k rows per page)
           const rows: Array<{ cluster_id: number; cluster_name: string | null; url: string }> = [];
@@ -475,9 +482,16 @@ export async function getClusterLeaderboard(runId: string, selectedWeeks?: strin
       >();
       for (const c of clusters) {
         if (!clusterMap.has(c.cluster_id)) {
-          const meta = clusterMetrics.find(
-            (m: BlogClusterMetrics) => m.cluster_id === c.cluster_id,
-          );
+          const meta = (
+            clusterMetrics as Array<{
+              cluster_id: number;
+              cluster_size: number;
+              cluster_coherence: number | null;
+              cluster_density: number | null;
+              avg_similarity: number | null;
+              min_similarity: number | null;
+            }>
+          ).find((m) => m.cluster_id === c.cluster_id);
           clusterMap.set(c.cluster_id, {
             cluster_id: c.cluster_id,
             cluster_name:
@@ -618,7 +632,7 @@ export async function getClusterLeaderboard(runId: string, selectedWeeks?: strin
       `delta:${weeksKeyOf(deltaWeeks)}`,
       devBypass,
     ],
-    { revalidate: WEEKLY_REVALIDATE_SECONDS },
+    { revalidate: WEEKLY_REVALIDATE_SECONDS, tags: ["metrics"] },
   )();
 }
 
@@ -731,7 +745,7 @@ export async function getClusterWeeklyMetrics(
       version,
       devBypass,
     ],
-    { revalidate: WEEKLY_REVALIDATE_SECONDS },
+    { revalidate: WEEKLY_REVALIDATE_SECONDS, tags: ["metrics"] },
   )();
 }
 
@@ -945,6 +959,6 @@ export async function getClusterUrlsMetrics(
       version,
       devBypass,
     ],
-    { revalidate: WEEKLY_REVALIDATE_SECONDS },
+    { revalidate: WEEKLY_REVALIDATE_SECONDS, tags: ["metrics"] },
   )();
 }

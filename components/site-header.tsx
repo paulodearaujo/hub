@@ -1,5 +1,6 @@
 "use client";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -87,6 +88,17 @@ export function SiteHeader({
         <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
         <h1 className="text-base font-medium">Clusters Dashboard</h1>
         <div className="ml-auto flex items-center gap-2">
+          {/* Gentle cooldown alert after a manual refresh to discourage spamming */}
+          {isPending && (
+            <div className="hidden sm:block">
+              <Alert variant="default" className="py-2 pr-3 pl-9">
+                <AlertTitle className="text-xs">Atualizando…</AlertTitle>
+                <AlertDescription className="text-xs text-muted-foreground">
+                  Vai com calma! Aguarde alguns segundos antes de forçar outra atualização.
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -182,8 +194,12 @@ export function SiteHeader({
             className="size-8"
             onClick={() => {
               startTransition(() => {
-                router.push(basePath);
-                router.refresh();
+                fetch("/api/revalidate", { method: "POST" })
+                  .catch(() => {})
+                  .finally(() => {
+                    router.push(basePath);
+                    router.refresh();
+                  });
               });
             }}
           >
