@@ -1,5 +1,5 @@
 import type { Database } from "@/lib/database.types";
-import { getRequiredSupabaseEnv } from "@/lib/supabase/config";
+import { getFetchWithRetry, getRequiredSupabaseEnv } from "@/lib/supabase/config";
 import { createServerClient } from "@supabase/ssr";
 import type { ResponseCookie } from "next/dist/compiled/@edge-runtime/cookies";
 import { cookies } from "next/headers";
@@ -14,6 +14,9 @@ export async function createClient() {
 
   const { url, anonKey } = getRequiredSupabaseEnv();
   return createServerClient<Database>(url, anonKey, {
+    global: {
+      fetch: getFetchWithRetry(2),
+    },
     cookies: {
       getAll() {
         return cookieStore.getAll();

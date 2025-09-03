@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 // Health check endpoint com verificação do banco de dados
 // Use /api/health/db para verificar também a conectividade com o Supabase
 export async function GET() {
@@ -11,9 +13,11 @@ export async function GET() {
     const supabase = await createClient();
 
     // Query simples e rápida apenas para verificar conectividade
-    const { error } = await supabase.from("blog_articles_metrics").select(
-      "week",
-    ).limit(1).single();
+    const { error } = await supabase
+      .from("blog_articles_metrics")
+      .select("week_ending")
+      .limit(1)
+      .single();
 
     const responseTime = Date.now() - startTime;
 

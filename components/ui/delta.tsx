@@ -12,11 +12,7 @@ export {
   calculatePercentageChange,
   calculatePositionDelta,
   calculatePreviousCtr,
-  calculatePreviousFromDeltaPct,
-  splitWeeksPeriods,
-  type DeltaCalculations,
-  type MetricValues,
-  type MetricsWithDelta,
+  calculatePreviousFromDeltaPct, splitWeeksPeriods, type DeltaCalculations, type MetricValues, type MetricsWithDelta
 } from "@/lib/delta-calculations";
 
 // ============================================================================
@@ -54,9 +50,18 @@ export function Delta({
 
   // Handle Infinity and NaN cases - show for debugging
   if (!Number.isFinite(num)) {
+    // UX: show "novo" for percent +Infinity (previous=0 → now>0). Keep debug text for others.
+    const label =
+      variant === "percent" && num === Number.POSITIVE_INFINITY
+        ? "novo"
+        : Number.isNaN(num)
+          ? "NaN"
+          : num > 0
+            ? "+∞"
+            : "-∞";
     return (
-      <span className={cn("text-xs text-orange-600 dark:text-orange-400", className)}>
-        {Number.isNaN(num) ? "NaN" : num > 0 ? "+∞" : "-∞"}
+      <span className={cn("text-xs text-muted-foreground", className)}>
+        {label}
         {suffix && <span className="ml-0.5">{suffix}</span>}
       </span>
     );
@@ -65,9 +70,17 @@ export function Delta({
   const magnitude = Math.abs(num);
 
   // Check if the rounded value would be zero
-  const roundedMagnitude =
-    Math.round(magnitude * Math.pow(10, precision)) / Math.pow(10, precision);
-  const isZero = roundedMagnitude === 0;
+  // For percent variant, the visual display is in percentage with 1 decimal place.
+  // The input value is a decimal (e.g., 0.034 -> 3.4%). So we must round in percent space.
+  let isZero: boolean;
+  if (variant === "percent") {
+    const roundedPercent = Math.round(magnitude * 100 * 10) / 10; // 1 decimal place in percent units
+    isZero = roundedPercent === 0;
+  } else {
+    const roundedMagnitude =
+      Math.round(magnitude * Math.pow(10, precision)) / Math.pow(10, precision);
+    isZero = roundedMagnitude === 0;
+  }
 
   const isPositive = num > 0;
 
@@ -181,10 +194,12 @@ export function getDeltaSortValue(data: any, fieldName: string): number | null {
   // Convert to number and handle special cases
   const numValue = Number(value);
 
-  // Handle NaN and Infinity
-  if (!Number.isFinite(numValue)) {
-    return null;
-  }
+  // Handle NaN
+  if (Number.isNaN(numValue)) return null;
+
+  // Map Infinity to a large finite number for stable sorting
+  if (numValue === Number.POSITIVE_INFINITY) return Number.MAX_SAFE_INTEGER;
+  if (numValue === Number.NEGATIVE_INFINITY) return -Number.MAX_SAFE_INTEGER;
 
   return numValue;
 }

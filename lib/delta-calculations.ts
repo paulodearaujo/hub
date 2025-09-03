@@ -36,7 +36,11 @@ export interface DeltaCalculations {
  * Returns 0 if previous is 0 or undefined
  */
 export function calculatePercentageChange(current: number, previous?: number): number {
-  if (!previous || previous === 0) return 0;
+  // Treat "novo" case: if previous is 0 and current > 0, surface +Infinity
+  if (previous === 0) {
+    return current > 0 ? Number.POSITIVE_INFINITY : 0;
+  }
+  if (!previous) return 0;
   return (current - previous) / previous;
 }
 

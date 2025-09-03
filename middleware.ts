@@ -6,17 +6,6 @@ export async function middleware(_request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - images - .svg, .png, .jpg, .jpeg, .gif, .webp
-     * - robots.txt
-     * - public folder files
-     * Feel free to modify this pattern to include more paths.
-     */
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|public|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
+  // Restrict to health check only to avoid global dynamic behavior
+  matcher: ["/api/health/:path*"],
 };
