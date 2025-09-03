@@ -1,5 +1,32 @@
 "use client";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  calculateCtrPointsChange,
+  calculatePreviousCtr,
+  Delta,
+  getDeltaSortValue,
+} from "@/components/ui/delta";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { ClusterUrlAggregates } from "@/lib/data/metrics-queries";
+import { formatCtr, formatNumber, formatPosition } from "@/lib/formatters";
+import { cn } from "@/lib/utils";
 import {
   IconArrowDown,
   IconArrowsUpDown,
@@ -29,33 +56,6 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import * as React from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  calculateCtrPointsChange,
-  calculatePreviousCtr,
-  Delta,
-  getDeltaSortValue,
-} from "@/components/ui/delta";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import { TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import type { ClusterUrlAggregates } from "@/lib/data/metrics-queries";
-import { formatCtr, formatNumber, formatPosition } from "@/lib/formatters";
-import { cn } from "@/lib/utils";
 
 // Helper: width/alignment classes per column id (simpler & DRY)
 const COLUMN_CLASS: Record<string, string> = {
@@ -134,7 +134,17 @@ function sanitizeForFilename(s: string): string {
 }
 
 // Create columns with deltaMode parameter
-function createColumns(deltaMode: boolean): ColumnDef<ClusterUrlAggregates>[] {
+function createColumns(
+  deltaMode: boolean,
+  clusterMeta?: {
+    id: number;
+    size: number;
+    coherence?: number | undefined;
+    density?: number | undefined;
+    avgSimilarity?: number | undefined;
+    minSimilarity?: number | undefined;
+  },
+): ColumnDef<ClusterUrlAggregates>[] {
   // Helper function to get sort value based on delta mode
   const getSortValue = (row: Row<ClusterUrlAggregates>, columnId: string): number => {
     if (deltaMode) {
@@ -193,17 +203,28 @@ function createColumns(deltaMode: boolean): ColumnDef<ClusterUrlAggregates>[] {
       accessorKey: "name",
       header: "Página",
       cell: ({ row }: { row: Row<ClusterUrlAggregates> }) => {
-        const url = row.original.url;
-        const title = row.original.name || url;
-        const tooltip =
-          title === url ? (
-            url
-          ) : (
-            <div className="max-w-[80vw]">
-              <div className="font-medium mb-1 break-words">{title}</div>
-              <div className="opacity-80 break-all text-xs">{url}</div>
+        const o = row.original;
+        const url = o.url;
+        const title = o.name || url;
+
+        const tooltip = (
+          <div className="max-w-[80vw]">
+            <div className="font-medium mb-1 break-words">{title}</div>
+            <div className="opacity-80 break-all text-xs mb-2">{url}</div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+              {/* Per-URL clustering attributes only */}
+              <div className="text-primary-foreground/90">Distância</div>
+              <div className="text-right font-medium text-primary-foreground">
+                {typeof o.distance === "number" ? formatPosition(o.distance) : "—"}
+              </div>
+              <div className="text-primary-foreground/90">Pai</div>
+              <div className="text-right font-medium text-primary-foreground">
+                {o.parent_name || (typeof o.parent_id === "number" ? `#${o.parent_id}` : "—")}
+              </div>
             </div>
-          );
+          </div>
+        );
+
         return (
           <div className="flex items-center gap-2 min-w-0">
             <Tooltip>
@@ -369,10 +390,19 @@ export function ClusterUrlsTable({
   data = [] as ClusterUrlAggregates[],
   clusterName,
   selectedWeeks,
+  clusterMeta,
 }: {
   data?: ClusterUrlAggregates[];
   clusterName?: string;
   selectedWeeks?: string[];
+  clusterMeta?: {
+    id: number;
+    size: number;
+    coherence?: number | undefined;
+    density?: number | undefined;
+    avgSimilarity?: number | undefined;
+    minSimilarity?: number | undefined;
+  };
 }) {
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "amplitude_conversions", desc: true },
@@ -388,7 +418,10 @@ export function ClusterUrlsTable({
   const [columnVisibility] = React.useState<Record<string, boolean>>({});
 
   // Create columns with current deltaMode
-  const columns = React.useMemo(() => createColumns(deltaMode), [deltaMode]);
+  const columns = React.useMemo(
+    () => createColumns(deltaMode, clusterMeta),
+    [deltaMode, clusterMeta],
+  );
 
   const table = useReactTable({
     data,

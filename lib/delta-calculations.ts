@@ -57,11 +57,9 @@ export function calculateCtrPointsChange(current?: number, previous?: number): n
   const cur = current ?? 0;
   const prev = previous ?? 0;
 
-  // Normalize both to percentage (0-100 range)
-  // If current > 1, it's already in percentage from DB
-  // If current <= 1, it's decimal and needs * 100
-  const curPercent = cur > 1 ? cur : cur * 100;
-  const prevPercent = prev > 1 ? prev : prev * 100;
+  // CTR now provided as decimal (0–1). Convert both to percentage points.
+  const curPercent = cur * 100;
+  const prevPercent = prev * 100;
 
   const delta = curPercent - prevPercent;
 

@@ -22,11 +22,11 @@ const DAYS_PER_WEEK = 7;
 // Usando tipo do banco de dados com campos opcionais para dados agregados
 type WeeklyMetric = Partial<Tables<"blog_articles_metrics">>;
 type NormalizedMetric = WeeklyMetric & {
-  amplitude_conversions_n: number;
-  gsc_clicks_n: number;
-  gsc_impressions_n: number;
-  gsc_ctr_n: number;
-  gsc_position_n: number;
+  amplitude_conversions_n: number | null;
+  gsc_clicks_n: number | null;
+  gsc_impressions_n: number | null;
+  gsc_ctr_n: number | null;
+  gsc_position_n: number | null;
 };
 
 interface WeeklyMetricsChartProps {
@@ -62,7 +62,7 @@ export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetr
         ...item,
         // Keep gsc_ctr as null to satisfy exactOptionalPropertyTypes while not using it
         gsc_ctr: item.gsc_ctr ?? null,
-        gsc_position: item.gsc_position || 0,
+        gsc_position: item.gsc_position ?? null,
       }));
 
     // Optional: Fill in missing weeks with null values to show gaps in the chart
@@ -125,31 +125,44 @@ export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetr
 
     const maxValues = {
       amplitude_conversions: Math.max(
-        ...filteredData.map((d) => Number(d.amplitude_conversions || 0)),
+        ...filteredData.map((d) =>
+          d.amplitude_conversions == null ? 0 : Number(d.amplitude_conversions),
+        ),
       ),
-      gsc_clicks: Math.max(...filteredData.map((d) => Number(d.gsc_clicks || 0))),
-      gsc_impressions: Math.max(...filteredData.map((d) => Number(d.gsc_impressions || 0))),
-      gsc_ctr: Math.max(...filteredData.map((d) => Number(d.gsc_ctr || 0))),
+      gsc_clicks: Math.max(
+        ...filteredData.map((d) => (d.gsc_clicks == null ? 0 : Number(d.gsc_clicks))),
+      ),
+      gsc_impressions: Math.max(
+        ...filteredData.map((d) => (d.gsc_impressions == null ? 0 : Number(d.gsc_impressions))),
+      ),
+      gsc_ctr: Math.max(...filteredData.map((d) => (d.gsc_ctr == null ? 0 : Number(d.gsc_ctr)))),
       // handled separately for inversion
     };
-    const posVals = filteredData.map((d) => Number(d.gsc_position || 0));
-    const maxPos = Math.max(...posVals);
-    const minPos = Math.min(...posVals.filter((v) => v > 0).concat([0]));
+    const posNums = filteredData
+      .map((d) => (d.gsc_position == null ? null : Number(d.gsc_position)))
+      .filter((v): v is number => typeof v === "number");
+    const maxPos = posNums.length > 0 ? Math.max(...posNums) : 0;
+    const minPos = posNums.length > 0 ? Math.min(...posNums) : 0;
     const _posDen = Math.max(1, maxPos - minPos);
 
     const clampDiv = (num: number, den: number) => (den > 0 ? (num / den) * 100 : 0);
 
     return filteredData.map((d) => ({
       ...d,
-      amplitude_conversions_n: clampDiv(
-        Number(d.amplitude_conversions || 0),
-        maxValues.amplitude_conversions,
-      ),
-      gsc_clicks_n: clampDiv(Number(d.gsc_clicks || 0), maxValues.gsc_clicks),
-      gsc_impressions_n: clampDiv(Number(d.gsc_impressions || 0), maxValues.gsc_impressions),
-      gsc_ctr_n: clampDiv(Number(d.gsc_ctr || 0), maxValues.gsc_ctr),
+      amplitude_conversions_n:
+        d.amplitude_conversions == null
+          ? null
+          : clampDiv(Number(d.amplitude_conversions), maxValues.amplitude_conversions),
+      gsc_clicks_n:
+        d.gsc_clicks == null ? null : clampDiv(Number(d.gsc_clicks), maxValues.gsc_clicks),
+      gsc_impressions_n:
+        d.gsc_impressions == null
+          ? null
+          : clampDiv(Number(d.gsc_impressions), maxValues.gsc_impressions),
+      gsc_ctr_n: d.gsc_ctr == null ? null : clampDiv(Number(d.gsc_ctr), maxValues.gsc_ctr),
       // Posição: normalizada sem inversão (valor maior = linha sobe)
-      gsc_position_n: clampDiv(Number(d.gsc_position || 0), maxPos),
+      gsc_position_n:
+        d.gsc_position == null ? null : clampDiv(Number(d.gsc_position) - minPos, _posDen),
     }));
   }, [filteredData]);
 
@@ -285,61 +298,72 @@ export function WeeklyMetricsChart({ data = [], selectedWeeks = [] }: WeeklyMetr
                 />
               }
             />
-            {selectedMetrics.includes("amplitude_conversions") && (
-              <Line
-                dataKey="amplitude_conversions_n"
-                name="amplitude_conversions"
-                type="monotone"
-                stroke="var(--color-amplitude_conversions)"
-                strokeWidth={2}
-                dot={false}
-                connectNulls={false}
-              />
-            )}
-            {selectedMetrics.includes("gsc_impressions") && (
-              <Line
-                dataKey="gsc_impressions_n"
-                name="gsc_impressions"
-                type="monotone"
-                stroke="var(--color-gsc_impressions)"
-                strokeWidth={2}
-                dot={false}
-                connectNulls={false}
-              />
-            )}
-            {selectedMetrics.includes("gsc_ctr") && (
-              <Line
-                dataKey="gsc_ctr_n"
-                name="gsc_ctr"
-                type="monotone"
-                stroke="var(--color-gsc_ctr)"
-                strokeWidth={2}
-                dot={false}
-                connectNulls={false}
-              />
-            )}
-            {selectedMetrics.includes("gsc_clicks") && (
-              <Line
-                dataKey="gsc_clicks_n"
-                name="gsc_clicks"
-                type="monotone"
-                stroke="var(--color-gsc_clicks)"
-                strokeWidth={2}
-                dot={false}
-                connectNulls={false}
-              />
-            )}
-            {selectedMetrics.includes("gsc_position") && (
-              <Line
-                dataKey="gsc_position_n"
-                name="gsc_position"
-                type="monotone"
-                stroke="var(--color-gsc_position)"
-                strokeWidth={2}
-                dot={false}
-                connectNulls={false}
-              />
-            )}
+            {/* Render all lines with stable order; toggle via `hide` and remount the specific line using key */}
+            <Line
+              key={`amplitude_conversions-${selectedMetrics.includes("amplitude_conversions") ? "on" : "off"}`}
+              dataKey="amplitude_conversions_n"
+              name="amplitude_conversions"
+              type="monotone"
+              stroke="var(--color-amplitude_conversions)"
+              strokeWidth={2}
+              dot={false}
+              connectNulls={false}
+              hide={!selectedMetrics.includes("amplitude_conversions")}
+              isAnimationActive={selectedMetrics.includes("amplitude_conversions")}
+              animationDuration={350}
+            />
+            <Line
+              key={`gsc_impressions-${selectedMetrics.includes("gsc_impressions") ? "on" : "off"}`}
+              dataKey="gsc_impressions_n"
+              name="gsc_impressions"
+              type="monotone"
+              stroke="var(--color-gsc_impressions)"
+              strokeWidth={2}
+              dot={false}
+              connectNulls={false}
+              hide={!selectedMetrics.includes("gsc_impressions")}
+              isAnimationActive={selectedMetrics.includes("gsc_impressions")}
+              animationDuration={350}
+            />
+            <Line
+              key={`gsc_ctr-${selectedMetrics.includes("gsc_ctr") ? "on" : "off"}`}
+              dataKey="gsc_ctr_n"
+              name="gsc_ctr"
+              type="monotone"
+              stroke="var(--color-gsc_ctr)"
+              strokeWidth={2}
+              dot={false}
+              connectNulls={false}
+              hide={!selectedMetrics.includes("gsc_ctr")}
+              isAnimationActive={selectedMetrics.includes("gsc_ctr")}
+              animationDuration={350}
+            />
+            <Line
+              key={`gsc_clicks-${selectedMetrics.includes("gsc_clicks") ? "on" : "off"}`}
+              dataKey="gsc_clicks_n"
+              name="gsc_clicks"
+              type="monotone"
+              stroke="var(--color-gsc_clicks)"
+              strokeWidth={2}
+              dot={false}
+              connectNulls={false}
+              hide={!selectedMetrics.includes("gsc_clicks")}
+              isAnimationActive={selectedMetrics.includes("gsc_clicks")}
+              animationDuration={350}
+            />
+            <Line
+              key={`gsc_position-${selectedMetrics.includes("gsc_position") ? "on" : "off"}`}
+              dataKey="gsc_position_n"
+              name="gsc_position"
+              type="monotone"
+              stroke="var(--color-gsc_position)"
+              strokeWidth={2}
+              dot={false}
+              connectNulls={false}
+              hide={!selectedMetrics.includes("gsc_position")}
+              isAnimationActive={selectedMetrics.includes("gsc_position")}
+              animationDuration={350}
+            />
           </LineChart>
         </ChartContainer>
       </CardContent>

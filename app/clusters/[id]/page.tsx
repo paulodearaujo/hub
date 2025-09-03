@@ -1,5 +1,3 @@
-import type { Metadata, ResolvingMetadata } from "next";
-import dynamic from "next/dynamic";
 import { SectionCards } from "@/app/components/section-cards";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -12,6 +10,8 @@ import {
   getRunMetadata,
 } from "@/lib/data/metrics-queries";
 import { calculateMetricsWithDeltas } from "@/lib/delta-calculations";
+import type { Metadata, ResolvingMetadata } from "next";
+import dynamic from "next/dynamic";
 
 import { ClusterHeader } from "../components/cluster-header";
 import { ClusterWrapper } from "./cluster-wrapper";
@@ -94,10 +94,22 @@ export default async function Page({ params, searchParams }: PageProps) {
                 meta={{
                   id: clusterId,
                   size: info?.cluster_size || 0,
-                  coherence: info?.cluster_coherence || 0,
-                  density: info?.cluster_density || 0,
-                  avgSimilarity: info?.avg_similarity || 0,
-                  minSimilarity: info?.min_similarity || 0,
+                  coherence:
+                    info && info.cluster_coherence !== null && info.cluster_coherence !== undefined
+                      ? info.cluster_coherence
+                      : undefined,
+                  density:
+                    info && info.cluster_density !== null && info.cluster_density !== undefined
+                      ? info.cluster_density
+                      : undefined,
+                  avgSimilarity:
+                    info && info.avg_similarity !== null && info.avg_similarity !== undefined
+                      ? info.avg_similarity
+                      : undefined,
+                  minSimilarity:
+                    info && info.min_similarity !== null && info.min_similarity !== undefined
+                      ? info.min_similarity
+                      : undefined,
                   runDate: formattedClusterDate || undefined,
                 }}
                 backHref={`/${selectedWeeks.length ? `?weeks=${selectedWeeks.join(",")}` : ""}`}
@@ -107,6 +119,26 @@ export default async function Page({ params, searchParams }: PageProps) {
                 clusterId={clusterId}
                 selectedWeeks={selectedWeeks}
                 clusterName={info?.cluster_name || `Cluster ${id}`}
+                clusterMeta={{
+                  id: clusterId,
+                  size: info?.cluster_size || 0,
+                  coherence:
+                    info && info.cluster_coherence !== null && info.cluster_coherence !== undefined
+                      ? info.cluster_coherence
+                      : undefined,
+                  density:
+                    info && info.cluster_density !== null && info.cluster_density !== undefined
+                      ? info.cluster_density
+                      : undefined,
+                  avgSimilarity:
+                    info && info.avg_similarity !== null && info.avg_similarity !== undefined
+                      ? info.avg_similarity
+                      : undefined,
+                  minSimilarity:
+                    info && info.min_similarity !== null && info.min_similarity !== undefined
+                      ? info.min_similarity
+                      : undefined,
+                }}
               />
             </div>
           </div>
@@ -152,10 +184,19 @@ async function ChartAndUrls({
   clusterId,
   selectedWeeks,
   clusterName,
+  clusterMeta,
 }: {
   clusterId: number;
   selectedWeeks: string[];
   clusterName: string;
+  clusterMeta: {
+    id: number;
+    size: number;
+    coherence?: number | undefined;
+    density?: number | undefined;
+    avgSimilarity?: number | undefined;
+    minSimilarity?: number | undefined;
+  };
 }) {
   const runId = await getLatestRunId();
   if (!runId) return null;
@@ -182,7 +223,12 @@ async function ChartAndUrls({
       <div className="px-4 lg:px-6">
         <WeeklyMetricsChart data={weekly} selectedWeeks={selectedWeeks} />
       </div>
-      <ClusterUrlsTable data={urls} clusterName={clusterName} selectedWeeks={selectedWeeks} />
+      <ClusterUrlsTable
+        data={urls}
+        clusterName={clusterName}
+        selectedWeeks={selectedWeeks}
+        clusterMeta={clusterMeta}
+      />
     </>
   );
 }

@@ -1,6 +1,7 @@
+import type { Database, Tables } from "@/lib/database.types";
+import { getRequiredSupabaseEnv } from "@/lib/supabase/config";
 import { createClient as createSbClient, type SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
-import type { Database, Tables } from "@/lib/database.types";
 
 // Reuse TCP connections to Supabase (lower TTFB) when running in Node with Undici available.
 // Avoid static imports so bundlers don't require 'undici'.
@@ -94,12 +95,8 @@ const METRICS_SELECT =
 
 // Supabase client (stateless) – sem cookies/sessão
 function createPublicClient(): SupabaseClient<Database> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY;
-  if (!url || !anon) throw new Error("Missing Supabase public env vars");
-  return createSbClient<Database>(url as string, anon as string, {
+  const { url, anonKey } = getRequiredSupabaseEnv();
+  return createSbClient<Database>(url as string, anonKey as string, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { "x-app": "dashboard-inbound" } },
   });
@@ -251,8 +248,7 @@ function aggregateWeekly(allData: BlogArticlesMetrics[]): WeeklyAggregateRow[] {
     w.gsc_clicks += item.gsc_clicks || 0;
     w.gsc_impressions += item.gsc_impressions || 0;
     w.amplitude_conversions += item.amplitude_conversions || 0;
-    // gsc_ctr já vem como percentual do banco (6.20 = 6.20%), não decimal
-    w.gsc_ctr_weighted += ((item.gsc_ctr || 0) / 100) * (item.gsc_impressions || 0);
+    w.gsc_ctr_weighted += (item.gsc_ctr || 0) * (item.gsc_impressions || 0);
     w.gsc_position_weighted += (item.gsc_position || 0) * (item.gsc_impressions || 0);
     w.count += 1;
     return acc;
@@ -639,7 +635,7 @@ export async function getClusterInfo(runId: string, clusterId: number) {
   const supabase = createPublicClient();
 
   // Read base cluster metrics (size, coherence, density...)
-  const { data: metric, error: metricError } = await supabase
+  const { data: metric } = await supabase
     .from("blog_cluster_metrics")
     .select(
       "cluster_id, cluster_size, cluster_coherence, cluster_density, avg_similarity, min_similarity",
@@ -655,10 +651,7 @@ export async function getClusterInfo(runId: string, clusterId: number) {
     .eq("run_id", runId)
     .eq("cluster_id", clusterId);
 
-  if (metricError && !metric) {
-    // Minimal fallback when metrics missing: still return URLs
-    // Note: upstream should always provide metrics, but we stay defensive here.
-  }
+  // If no metric row, we'll return undefined for metric fields
   if (clustersError && !clusters) {
     return null;
   }
@@ -671,10 +664,10 @@ export async function getClusterInfo(runId: string, clusterId: number) {
     cluster_name:
       clusterName || (clusterId === OUTLIER_CLUSTER_ID ? "Outliers" : `Cluster ${clusterId}`),
     cluster_size: metric?.cluster_size ?? urls.length,
-    cluster_coherence: metric?.cluster_coherence ?? 0,
-    cluster_density: metric?.cluster_density ?? 0,
-    avg_similarity: metric?.avg_similarity ?? 0,
-    min_similarity: metric?.min_similarity ?? 0,
+    cluster_coherence: metric?.cluster_coherence,
+    cluster_density: metric?.cluster_density,
+    avg_similarity: metric?.avg_similarity,
+    min_similarity: metric?.min_similarity,
     urls,
   };
 }
@@ -738,6 +731,10 @@ export type ClusterUrlAggregates = {
   gsc_position_delta?: number; // improvement positive
   gsc_position_delta_pct?: number;
   gsc_ctr_delta?: number;
+  // per-URL clustering attributes
+  distance?: number | null;
+  parent_id?: number | null;
+  parent_name?: string | null;
 };
 
 /**
@@ -797,8 +794,8 @@ export async function getClusterUrlsMetrics(
     u.gsc_clicks += item.gsc_clicks || 0;
     u.gsc_impressions += item.gsc_impressions || 0;
     u.amplitude_conversions += item.amplitude_conversions || 0;
-    // gsc_ctr já vem como percentual do banco (6.20 = 6.20%), converter para decimal
-    u._ctr_weighted += ((item.gsc_ctr || 0) / 100) * (item.gsc_impressions || 0);
+    // CTR now stored as decimal (0–1). Use decimal directly for weighted aggregation.
+    u._ctr_weighted += (item.gsc_ctr || 0) * (item.gsc_impressions || 0);
     u._pos_weighted += (item.gsc_position || 0) * (item.gsc_impressions || 0);
     return acc;
   }, {});
@@ -866,6 +863,32 @@ export async function getClusterUrlsMetrics(
       nameMap.set(a.url, a.name),
     );
     rows = rows.map((r) => ({ ...r, name: nameMap.get(r.url) ?? r.name }));
+
+    // Enriquecer com métricas de clusterização por URL (distância, hierarquia)
+    const { data: clusterRows } = await supabase
+      .from("blog_clusters")
+      .select("url, distance, parent_id, parent_name")
+      .eq("run_id", runId)
+      .eq("cluster_id", clusterId)
+      .in("url", urlPage);
+    const metaMap = new Map<
+      string,
+      { distance: number | null; parent_id: number | null; parent_name: string | null }
+    >();
+    (clusterRows || []).forEach(
+      (c: {
+        url: string;
+        distance: number | null;
+        parent_id: number | null;
+        parent_name: string | null;
+      }) =>
+        metaMap.set(c.url, {
+          distance: c.distance ?? null,
+          parent_id: c.parent_id ?? null,
+          parent_name: c.parent_name ?? null,
+        }),
+    );
+    rows = rows.map((r) => ({ ...r, ...(metaMap.get(r.url) ?? {}) }));
   }
 
   const devBypass = process.env.NODE_ENV !== "production" ? String(Date.now()) : "";

@@ -1,3 +1,4 @@
+import { resolveSupabaseEnv } from "@/lib/supabase/config";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
@@ -66,21 +67,26 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const { url: SUPABASE_URL } = resolveSupabaseEnv();
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
-        {process.env.NEXT_PUBLIC_SUPABASE_URL ? (
+        {SUPABASE_URL ? (
           <>
-            <link
-              rel="preconnect"
-              href={process.env.NEXT_PUBLIC_SUPABASE_URL}
-              crossOrigin="anonymous"
-            />
-            <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL} />
+            <link rel="preconnect" href={SUPABASE_URL} crossOrigin="anonymous" />
+            <link rel="dns-prefetch" href={SUPABASE_URL} />
           </>
         ) : null}
       </head>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        <a
+          href="#main-content"
+          className="fixed left-3 top-3 z-[100] -translate-y-20 focus:translate-y-0 transition-transform rounded-md bg-primary px-3 py-2 text-primary-foreground shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Pular para conteúdo
+        </a>
+        <div id="main-content">{children}</div>
+      </body>
     </html>
   );
 }

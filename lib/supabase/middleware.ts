@@ -1,7 +1,8 @@
+import type { Database } from "@/lib/database.types";
+import { resolveSupabaseEnv } from "@/lib/supabase/config";
 import { createServerClient } from "@supabase/ssr";
 import type { ResponseCookie } from "next/dist/compiled/@edge-runtime/cookies";
-import { type NextRequest, NextResponse } from "next/server";
-import type { Database } from "@/lib/database.types";
+import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -9,19 +10,15 @@ export async function updateSession(request: NextRequest) {
   });
 
   // Check if we have the required environment variables
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY;
-
-  if (!url || !anon) {
+  const { url, anonKey } = resolveSupabaseEnv();
+  if (!url || !anonKey) {
     // If no Supabase config, just pass through
     return supabaseResponse;
   }
 
   try {
     // Create Supabase client for middleware
-    const supabase = createServerClient<Database>(url, anon, {
+    const supabase = createServerClient<Database>(url, anonKey, {
       cookies: {
         getAll() {
           return request.cookies.getAll();

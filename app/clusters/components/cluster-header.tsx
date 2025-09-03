@@ -1,9 +1,9 @@
 "use client";
 
-import { IconArrowLeft } from "@tabler/icons-react";
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { IconArrowLeft } from "@tabler/icons-react";
+import Link from "next/link";
 
 export function ClusterHeader({
   name,
@@ -14,10 +14,10 @@ export function ClusterHeader({
   meta: {
     id: number;
     size: number;
-    coherence: number;
-    density: number;
-    avgSimilarity: number;
-    minSimilarity: number;
+    coherence?: number | undefined;
+    density?: number | undefined;
+    avgSimilarity?: number | undefined;
+    minSimilarity?: number | undefined;
     runDate?: string | undefined;
   };
   backHref?: string;
@@ -42,25 +42,33 @@ export function ClusterHeader({
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Badge variant="secondary">Coerência {meta.coherence.toFixed(2)}</Badge>
+            <Badge variant="secondary">
+              Coerência {meta.coherence === undefined ? "—" : meta.coherence.toFixed(2)}
+            </Badge>
           </TooltipTrigger>
           <TooltipContent>Força média de similaridade interna do cluster (0-1).</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Badge variant="secondary">Densidade {meta.density.toFixed(2)}</Badge>
+            <Badge variant="secondary">
+              Densidade {meta.density === undefined ? "—" : meta.density.toFixed(2)}
+            </Badge>
           </TooltipTrigger>
           <TooltipContent>Quão conectados estão os itens entre si (0-1).</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Badge variant="secondary">Sim. Média {meta.avgSimilarity.toFixed(2)}</Badge>
+            <Badge variant="secondary">
+              Sim. Média {meta.avgSimilarity === undefined ? "—" : meta.avgSimilarity.toFixed(2)}
+            </Badge>
           </TooltipTrigger>
           <TooltipContent>Similaridade média entre os pares do cluster (0-1).</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Badge variant="secondary">Sim. Mín. {meta.minSimilarity.toFixed(2)}</Badge>
+            <Badge variant="secondary">
+              Sim. Mín. {meta.minSimilarity === undefined ? "—" : meta.minSimilarity.toFixed(2)}
+            </Badge>
           </TooltipTrigger>
           <TooltipContent>Menor similaridade observada no cluster (0-1).</TooltipContent>
         </Tooltip>

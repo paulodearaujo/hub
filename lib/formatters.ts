@@ -65,15 +65,14 @@ export function formatCompactNumber(value: number | null | undefined): string {
 /**
  * Format CTR as percentage with 2 decimal places
  * Uses Brazilian standard: comma as decimal separator
- * ATENÇÃO: CTR do banco já vem em percentual (6.20 = 6.20%), não decimal!
- * @example formatCtr(0.04523) => "4,52%" (cálculos) ou formatCtr(6.20) => "6,20%" (do banco)
+ * Banco agora entrega CTR como decimal (0–1); sempre convertemos para %.
+ * @example formatCtr(0.04523) => "4,52%"
  */
 export function formatCtr(value: number | null | undefined): string {
   if (!isValid(value)) return "0%";
 
-  // Se o valor for maior que 1, assume que já está em percentual (vindo do banco)
-  // Senão, assume que é decimal (0-1) e precisa multiplicar por 100
-  const percentage = value > 1 ? value : value * 100;
+  // Valor é decimal (0–1). Converter para percentual.
+  const percentage = value * 100;
   if (percentage === 0) return "0%";
 
   return `${formatDecimal(percentage, 2)}%`;
