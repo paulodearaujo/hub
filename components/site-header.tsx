@@ -34,6 +34,7 @@ export function SiteHeader({
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
+  const [refreshing, setRefreshing] = React.useState(false);
   const [selectedWeeks, setSelectedWeeks] = React.useState<string[]>(currentWeeks);
   const uid = React.useId();
 
@@ -89,7 +90,7 @@ export function SiteHeader({
         <h1 className="text-base font-medium">Clusters Dashboard</h1>
         <div className="ml-auto flex items-center gap-2">
           {/* Gentle cooldown alert after a manual refresh to discourage spamming */}
-          {isPending && (
+          {refreshing && (
             <div className="hidden sm:block">
               <Alert variant="default" className="py-2 pr-3 pl-9">
                 <AlertTitle className="text-xs">Atualizando…</AlertTitle>
@@ -192,15 +193,15 @@ export function SiteHeader({
             variant="outline"
             size="icon"
             className="size-8"
-            onClick={() => {
-              startTransition(() => {
-                fetch("/api/revalidate", { method: "POST" })
-                  .catch(() => {})
-                  .finally(() => {
-                    router.push(basePath);
-                    router.refresh();
-                  });
-              });
+            onClick={async () => {
+              if (refreshing) return;
+              setRefreshing(true);
+              try {
+                await fetch("/api/revalidate", { method: "POST", cache: "no-store" });
+              } catch {}
+              router.refresh();
+              // small grace to keep feedback visible
+              setTimeout(() => setRefreshing(false), 800);
             }}
           >
             <IconRefresh className="size-4" />
