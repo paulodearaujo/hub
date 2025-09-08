@@ -1,7 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { calculateCtrPointsChange, calculatePreviousCtr, Delta } from "@/components/ui/delta";
 import {
   IconArrowDown,
   IconArrowsUpDown,
@@ -30,6 +28,8 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
+import { Button } from "@/components/ui/button";
+import { calculateCtrPointsChange, calculatePreviousCtr, Delta } from "@/components/ui/delta";
 // removed column toggle UI per request
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -73,10 +73,12 @@ interface ClusterData
 export function ClusterLeaderboardTable({
   data = [],
   clusterCreatedAt,
+  clusterUpdatedAt,
   selectedWeeks,
 }: {
   data: ClusterData[];
   clusterCreatedAt?: string | null; // Already formatted date string
+  clusterUpdatedAt?: string | null; // Already formatted date string
   selectedWeeks?: string[];
 }) {
   const router = useRouter();
@@ -554,16 +556,33 @@ export function ClusterLeaderboardTable({
             </>
           )}
         </div>
-        {clusterCreatedAt && (
-          <div className="text-xs text-muted-foreground ml-auto">
-            Categorização de{" "}
-            {new Date(clusterCreatedAt).toLocaleDateString("pt-BR", {
-              day: "2-digit",
-              month: "long",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+        {(clusterCreatedAt || clusterUpdatedAt) && (
+          <div className="text-xs text-muted-foreground ml-auto text-right">
+            {clusterCreatedAt && (
+              <span>
+                Categorização de{" "}
+                {new Date(clusterCreatedAt).toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "long",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            )}
+            {clusterCreatedAt && clusterUpdatedAt ? " • " : null}
+            {clusterUpdatedAt && (
+              <span>
+                Atualizado em{" "}
+                {new Date(clusterUpdatedAt).toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "long",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            )}
           </div>
         )}
       </div>

@@ -1,5 +1,8 @@
 "use client";
-
+import { IconCalendar, IconRefresh } from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
+import * as React from "react";
+import { createPortal } from "react-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -8,9 +11,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { formatWeekDisplay } from "@/lib/formatters";
-import { IconCalendar, IconRefresh } from "@tabler/icons-react";
-import { useRouter } from "next/navigation";
-import * as React from "react";
 
 interface SiteHeaderProps {
   availableWeeks?: string[];
@@ -35,6 +35,7 @@ export function SiteHeader({
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
   const [refreshing, setRefreshing] = React.useState(false);
+  const [showCooldown, setShowCooldown] = React.useState(false);
   const [selectedWeeks, setSelectedWeeks] = React.useState<string[]>(currentWeeks);
   const uid = React.useId();
 
@@ -89,17 +90,6 @@ export function SiteHeader({
         <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
         <h1 className="text-base font-medium">Clusters Dashboard</h1>
         <div className="ml-auto flex items-center gap-2">
-          {/* Gentle cooldown alert after a manual refresh to discourage spamming */}
-          {refreshing && (
-            <div className="hidden sm:block">
-              <Alert variant="default" className="py-2 pr-3 pl-9">
-                <AlertTitle className="text-xs">Atualizando…</AlertTitle>
-                <AlertDescription className="text-xs text-muted-foreground">
-                  Vai com calma! Aguarde alguns segundos antes de forçar outra atualização.
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -197,17 +187,38 @@ export function SiteHeader({
               if (refreshing) return;
               setRefreshing(true);
               try {
-                await fetch("/api/revalidate", { method: "POST", cache: "no-store" });
-              } catch {}
+                const res = await fetch("/api/revalidate", { method: "POST", cache: "no-store" });
+                if (!res.ok) {
+                  if (res.status === 429) {
+                    setShowCooldown(true);
+                    // Hide after short delay
+                    setTimeout(() => setShowCooldown(false), 1800);
+                  }
+                }
+              } catch {
+                // ignore network failures for the UX here
+              }
               router.refresh();
               // small grace to keep feedback visible
               setTimeout(() => setRefreshing(false), 800);
             }}
           >
-            <IconRefresh className="size-4" />
+            <IconRefresh className={`size-4 ${refreshing ? "animate-spin" : ""}`} />
           </Button>
         </div>
       </div>
+      {showCooldown &&
+        createPortal(
+          <div className="fixed left-1/2 top-4 z-[1000] -translate-x-1/2 min-w-64 max-w-[90vw]">
+            <Alert className="shadow-md">
+              <AlertTitle className="text-xs">Vai com calma!</AlertTitle>
+              <AlertDescription className="text-xs">
+                Aguarde alguns segundos antes de forçar outra atualização.
+              </AlertDescription>
+            </Alert>
+          </div>,
+          document.body,
+        )}
     </header>
   );
 }

@@ -13,9 +13,11 @@ const nextConfig: NextConfig = {
   // Compiler options para melhor performance
   compiler: {
     // Remove console.log em produção (exceto error e warn)
-    removeConsole: isDev ? false : {
-      exclude: ["error", "warn"],
-    },
+    removeConsole: isDev
+      ? false
+      : {
+          exclude: ["error", "warn"],
+        },
   },
 
   // Otimização de imagens
@@ -81,10 +83,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@supabase/ssr", "@supabase/supabase-js"],
 
   // Webpack optimizations
-  webpack: (
-    config: import("webpack").Configuration,
-    { isServer }: { isServer: boolean },
-  ) => {
+  webpack: (config: import("webpack").Configuration, { isServer }: { isServer: boolean }) => {
     // Otimização de chunks apenas em produção no cliente
     if (!isDev && !isServer) {
       config.optimization = {
@@ -103,22 +102,18 @@ const nextConfig: NextConfig = {
             framework: {
               name: "framework",
               chunks: "all",
-              test:
-                /[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
+              test: /[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
               priority: 40,
               enforce: true,
             },
             // Lib chunk para pacotes grandes
             lib: {
               test(module: { size: () => number; identifier: () => string }) {
-                return module.size() > 160000 &&
-                  /node_modules[/\\]/.test(module.identifier());
+                return module.size() > 160000 && /node_modules[/\\]/.test(module.identifier());
               },
               name(module: { identifier: () => string }) {
                 const crypto = require("node:crypto");
-                const hash = crypto.createHash("sha1").update(
-                  module.identifier(),
-                ).digest("hex");
+                const hash = crypto.createHash("sha1").update(module.identifier()).digest("hex");
                 return `lib-${hash.substring(0, 8)}`;
               },
               priority: 30,

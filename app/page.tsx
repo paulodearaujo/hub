@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import { SectionCards } from "@/app/components/section-cards";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -11,8 +13,6 @@ import {
 } from "@/lib/data/metrics-queries";
 import type { Tables } from "@/lib/database.types";
 import { calculateMetricsWithDeltas } from "@/lib/delta-calculations";
-import type { Metadata } from "next";
-import dynamic from "next/dynamic";
 
 import { DashboardWrapper } from "./dashboard-wrapper";
 
@@ -52,9 +52,12 @@ export default async function Page({ searchParams }: PageProps) {
   // Get run metadata
   const runMetadata = await getRunMetadata(runId);
 
-  // Format date on server to avoid hydration mismatch
+  // Format dates on server to avoid hydration mismatch
   const formattedClusterDate = runMetadata?.createdAt
     ? new Date(runMetadata.createdAt).toISOString()
+    : null;
+  const formattedClusterUpdatedAt = runMetadata?.updatedAt
+    ? new Date(runMetadata.updatedAt).toISOString()
     : null;
 
   // Get available weeks
@@ -98,6 +101,7 @@ export default async function Page({ searchParams }: PageProps) {
                 runId={runId}
                 selectedWeeks={selectedWeeks}
                 clusterCreatedAt={formattedClusterDate}
+                clusterUpdatedAt={formattedClusterUpdatedAt}
               />
             </div>
           </div>
@@ -136,10 +140,12 @@ async function ChartAndTable({
   runId,
   selectedWeeks,
   clusterCreatedAt,
+  clusterUpdatedAt,
 }: {
   runId: string;
   selectedWeeks: string[];
   clusterCreatedAt: string | null;
+  clusterUpdatedAt: string | null;
 }) {
   const [weeklyMetrics, clusterLeaderboard] = await Promise.all([
     // Chart: include previous week when only one is selected for WoW
@@ -166,6 +172,7 @@ async function ChartAndTable({
       <ClusterLeaderboardTable
         data={clusterLeaderboard}
         clusterCreatedAt={clusterCreatedAt}
+        clusterUpdatedAt={clusterUpdatedAt}
         selectedWeeks={selectedWeeks}
       />
     </>

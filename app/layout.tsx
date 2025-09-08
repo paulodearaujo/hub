@@ -1,5 +1,5 @@
-import { resolveSupabaseEnv } from "@/lib/supabase/config";
 import type { Metadata, Viewport } from "next";
+import { resolveSupabaseEnv } from "@/lib/supabase/config";
 import "./globals.css";
 
 const APP_NAME = "Dashboard SEO Clustering";

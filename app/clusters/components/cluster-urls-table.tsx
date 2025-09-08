@@ -1,32 +1,5 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  calculateCtrPointsChange,
-  calculatePreviousCtr,
-  Delta,
-  getDeltaSortValue,
-} from "@/components/ui/delta";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import { TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import type { ClusterUrlAggregates } from "@/lib/data/metrics-queries";
-import { formatCtr, formatNumber, formatPosition } from "@/lib/formatters";
-import { cn } from "@/lib/utils";
 import {
   IconArrowDown,
   IconArrowsUpDown,
@@ -57,6 +30,33 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import * as React from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  calculateCtrPointsChange,
+  calculatePreviousCtr,
+  Delta,
+  getDeltaSortValue,
+} from "@/components/ui/delta";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { ClusterUrlAggregates } from "@/lib/data/metrics-queries";
+import { formatCtr, formatNumber, formatPosition } from "@/lib/formatters";
+import { cn } from "@/lib/utils";
 
 // Helper: width/alignment classes per column id (simpler & DRY)
 const COLUMN_CLASS: Record<string, string> = {

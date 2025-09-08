@@ -1,8 +1,8 @@
 "use client";
 
+import { IconTrendingDown, IconTrendingUp } from "@tabler/icons-react";
 import { formatPercentageChange } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
-import { IconTrendingDown, IconTrendingUp } from "@tabler/icons-react";
 
 // Re-export calculation utilities from lib
 export {
@@ -13,10 +13,10 @@ export {
   calculatePositionDelta,
   calculatePreviousCtr,
   calculatePreviousFromDeltaPct,
-  splitWeeksPeriods,
   type DeltaCalculations,
-  type MetricValues,
   type MetricsWithDelta,
+  type MetricValues,
+  splitWeeksPeriods,
 } from "@/lib/delta-calculations";
 
 // ============================================================================

@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 const COOLDOWN_SECONDS = 4; // basic spam protection
 
@@ -30,7 +30,8 @@ export async function POST(req: NextRequest) {
     res.cookies.set("metrics_rv", "1", {
       httpOnly: true,
       sameSite: "lax",
-      secure: true,
+      // In dev (http://localhost) secure cookies não são gravadas; em prod mantemos secure=true
+      secure: process.env.NODE_ENV === "production",
       path: "/",
       maxAge: COOLDOWN_SECONDS,
     });

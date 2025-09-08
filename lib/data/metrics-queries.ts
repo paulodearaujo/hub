@@ -1,7 +1,7 @@
-import type { Database, Tables } from "@/lib/database.types";
-import { getFetchWithRetry, getRequiredSupabaseEnv } from "@/lib/supabase/config";
 import { createClient as createSbClient, type SupabaseClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
+import type { Database, Tables } from "@/lib/database.types";
+import { getFetchWithRetry, getRequiredSupabaseEnv } from "@/lib/supabase/config";
 
 // Reuse TCP connections to Supabase (lower TTFB) when running in Node with Undici available.
 // Avoid static imports so bundlers don't require 'undici'.
@@ -114,6 +114,18 @@ async function getWeeksVersion(): Promise<string> {
     .limit(1)
     .maybeSingle();
   return (data?.week_ending as string | undefined) ?? "0";
+}
+
+// Capture latest updates in clustering data (even within same run)
+async function getRunsVersion(): Promise<string> {
+  const supabase = createPublicClient();
+  const { data } = await supabase
+    .from("blog_clusters")
+    .select("updated_at")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data?.updated_at as string | undefined) ?? "0";
 }
 
 function chunkArray<T>(items: T[], chunkSize: number): T[][] {
@@ -268,6 +280,7 @@ function aggregateWeekly(allData: BlogArticlesMetrics[]): WeeklyAggregateRow[] {
 
 export async function getLatestRunId() {
   const devBypass = process.env.NODE_ENV !== "production" ? String(Date.now()) : "";
+  const runsVersion = await getRunsVersion();
   return unstable_cache(
     async () => {
       const supabase = createPublicClient();
@@ -280,7 +293,7 @@ export async function getLatestRunId() {
       if (error) return null;
       return data?.run_id as string | null;
     },
-    ["data:getLatestRunId", devBypass],
+    ["data:getLatestRunId", runsVersion, devBypass],
     { revalidate: WEEKLY_REVALIDATE_SECONDS, tags: ["metrics"] },
   )();
 }
@@ -290,17 +303,28 @@ export async function getRunMetadata(runId: string) {
   return unstable_cache(
     async () => {
       const supabase = createPublicClient();
-      const { data, error } = await supabase
+      // Earliest created_at as run creation timestamp
+      const { data: createdRow } = await supabase
         .from("blog_clusters")
         .select("run_id, created_at")
         .eq("run_id", runId)
-        .order("created_at", { ascending: false })
+        .order("created_at", { ascending: true })
         .limit(1)
-        .single();
-      if (error) return null;
+        .maybeSingle();
+
+      // Latest updated_at across the run, as last update timestamp
+      const { data: updatedRow } = await supabase
+        .from("blog_clusters")
+        .select("updated_at")
+        .eq("run_id", runId)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
       return {
-        runId: data?.run_id as string | undefined,
-        createdAt: data?.created_at as string | undefined,
+        runId: createdRow?.run_id as string | undefined,
+        createdAt: createdRow?.created_at as string | undefined,
+        updatedAt: (updatedRow?.updated_at as string | undefined) ?? undefined,
       };
     },
     ["data:getRunMetadata", runId, devBypass],
@@ -413,7 +437,7 @@ export async function getWeeklyMetrics(selectedWeeks?: string[]) {
 }
 
 export async function getClusterLeaderboard(runId: string, selectedWeeks?: string[]) {
-  const version = await getWeeksVersion();
+  const [version, runsVersion] = await Promise.all([getWeeksVersion(), getRunsVersion()]);
   const devBypass = process.env.NODE_ENV !== "production" ? String(Date.now()) : "";
   // Use a composite cache key to separate base period vs delta comparison period
   const deltaWeeks = await weeksForDelta(selectedWeeks);
@@ -630,6 +654,7 @@ export async function getClusterLeaderboard(runId: string, selectedWeeks?: strin
       version,
       `sel:${weeksKeyOf(selectedWeeks)}`,
       `delta:${weeksKeyOf(deltaWeeks)}`,
+      `rv:${runsVersion}`,
       devBypass,
     ],
     { revalidate: WEEKLY_REVALIDATE_SECONDS, tags: ["metrics"] },
@@ -715,7 +740,7 @@ export async function getClusterWeeklyMetrics(
   clusterId: number,
   selectedWeeks?: string[],
 ) {
-  const version = await getWeeksVersion();
+  const [version, runsVersion] = await Promise.all([getWeeksVersion(), getRunsVersion()]);
   const devBypass = process.env.NODE_ENV !== "production" ? String(Date.now()) : "";
   return unstable_cache(
     async () => {
@@ -743,6 +768,7 @@ export async function getClusterWeeklyMetrics(
       String(clusterId),
       weeksKeyOf(selectedWeeks),
       version,
+      `rv:${runsVersion}`,
       devBypass,
     ],
     { revalidate: WEEKLY_REVALIDATE_SECONDS, tags: ["metrics"] },
@@ -784,7 +810,7 @@ export async function getClusterUrlsMetrics(
   limit = 200,
   offset = 0,
 ) {
-  const version = await getWeeksVersion();
+  const [version, runsVersion] = await Promise.all([getWeeksVersion(), getRunsVersion()]);
   // Include delta weeks in cache key to account for single-week fallback behavior
   const deltaWeeksForKey = await weeksForDelta(selectedWeeks);
   const devBypass = process.env.NODE_ENV !== "production" ? String(Date.now()) : "";
@@ -957,6 +983,7 @@ export async function getClusterUrlsMetrics(
       `l:${limit}`,
       `o:${offset}`,
       version,
+      `rv:${runsVersion}`,
       devBypass,
     ],
     { revalidate: WEEKLY_REVALIDATE_SECONDS, tags: ["metrics"] },
